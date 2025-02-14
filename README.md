@@ -26,7 +26,7 @@ Additionally, a **royalty system** based on Solana smart contracts is integrated
 ## Features
 
 - **NFT Book Cover:** The cover of each book is stored as a unique NFT, providing proof of ownership and authenticity.
-- **Decentralized Storage:** Each chapter of the book is stored as a separate piece of data on the blockchain, ensuring it is immutable fast accessible.
+- **Decentralized Storage:** Each chapter of the book is stored as a separate piece of data on the blockchain, ensuring it is immutable and easily accessible.
 - **Contributor Credits:** The back of the book lists all contributors, giving them recognition through blockchain-based records.
 - **Royalty System:** A transparent and automated royalty system based on Solana smart contracts, ensuring fair payments to authors, artists, and other contributors.
 - **Blockchain Transparency:** Every transaction related to the book, from creation to royalty payments, is tracked and verified on the Solana blockchain.
@@ -80,10 +80,11 @@ Additionally, a **royalty system** based on Solana smart contracts is integrated
 We welcome contributions to The Digital Archive! If you'd like to contribute, follow these steps:
 
 - Fork the repository and clone it to your machine.
-- Create a new branch for your changes (git checkout -b feature/your-feature).
-- Commit your changes (git commit -m 'Add new feature').
-- Push to your forked repository (git push origin feature/your-feature).
+- Create a new branch for your changes (`git checkout -b feature/your-feature`).
+- Commit your changes (`git commit -m 'Add new feature'`).
+- Push to your forked repository (`git push origin feature/your-feature`).
 - Open a pull request and describe your changes.
 
 ## License
 
+This project is licensed - see the LICENSE file for details.
