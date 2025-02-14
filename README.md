@@ -1,4 +1,4 @@
-# The Digital Archive
+# The Digital Archive (POC)
 
 **The Digital Archive** is a decentralized platform aimed at revolutionizing how books are published and stored. By leveraging **Solana blockchain** technology, this project will store books in a secure, immutable, and transparent way, ensuring that authors, artists, and contributors are compensated fairly through a transparent royalty system.
 The Digital Archive acts as the publisher, bringing books to life in the blockchain era.
@@ -36,7 +36,6 @@ Additionally, a **royalty system** based on Solana smart contracts is integrated
 - **Solana Blockchain:** The primary blockchain used for storing book data and implementing smart contracts.
 - **NFT (Non-Fungible Tokens):** Used to store the unique cover of the book as a tokenized asset.
 - **Smart Contracts (Solana):** Used to manage royalty payments and other functionalities related to book publishing.
-- **IPFS (InterPlanetary File System):** Used for storing the text and chapters of the book in a decentralized manner.
 - **Rust:** The programming language for building Solana smart contracts.
 - **React:** Used to build the frontend for the user interface.
 - **Solana Web3.js:** Library used to interact with the Solana blockchain.
@@ -52,7 +51,6 @@ Additionally, a **royalty system** based on Solana smart contracts is integrated
 ### Phase 2: Core Development (Q2 2025)
 - Develop Solana smart contracts to handle the royalty system and ownership tracking.
 - Implement the NFT system for the book cover.
-- Build the decentralized storage mechanism for the chapters using IPFS and Solana.
 - Implement a simple frontend interface for authors and contributors to upload books and interact with the platform.
 
 ### Phase 3: Royalty System and Testing (Q3 2025)
