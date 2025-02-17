@@ -1,0 +1,6 @@
+# Gitignore divided by modules
+
+# light-writers-rs
+target
+Cargo.lock
+light-writer-rs/books-templates/simulated_book_chapter.json
