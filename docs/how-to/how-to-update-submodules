@@ -1,0 +1,85 @@
+# Managing Submodules in `the-archive`
+
+## Overview
+This repository (`the-archive`) integrates multiple external repositories (submodules) to maintain modularity and allow easy updates from upstream sources. This guide explains how to add, update, and manage these submodules efficiently.
+
+## Adding a New Submodule
+To include an external repository as a submodule, use:
+
+```sh
+cd ~/the-archive
+git submodule add <repo-url> <local-path>
+```
+
+Example:
+```sh
+git submodule add https://github.com/rzanei/blockchain-devops.git blockchain-devops
+```
+
+This command will clone the repository inside `the-archive` while maintaining a reference to its original source.
+
+## Keeping Only Selected Files (Sparse Checkout)
+If the submodule contains unnecessary files, you can enable sparse checkout:
+
+```sh
+cd blockchain-devops
+git sparse-checkout init --cone
+git sparse-checkout set <interested_files> 
+git checkout main
+cd ..
+```
+
+Example:
+```sh
+git sparse-checkout set solana_setup 
+```
+
+This ensures only the specified files/folders are pulled while keeping the submodule linked to its remote repository.
+
+## Committing the Submodule Reference
+Once a submodule is added, commit the changes:
+
+```sh
+git add .
+git commit -m "feat: [Git Submodule] <sub_module_name>"
+git push origin main
+```
+
+## Updating Submodules
+When an upstream repository updates, you can pull those changes into `the-archive` using:
+
+```sh
+cd ~/the-archive
+git submodule update --remote --merge
+git commit -m "Updated blockchain-devops submodule"
+git push origin main
+```
+
+This fetches the latest changes from the submodule’s remote repository and merges them into your local copy.
+
+## Cloning the Repository with Submodules
+If you clone `the-archive`, ensure submodules are initialized and updated by running:
+
+```sh
+git clone --recurse-submodules https://github.com/TheDigitalArchive/the-archive.git
+```
+
+Or, if already cloned:
+```sh
+git submodule update --init --recursive
+```
+
+## Removing a Submodule
+If a submodule is no longer needed, remove it as follows:
+
+```sh
+git submodule deinit -f <submodule-path>
+git rm -f <submodule-path>
+git commit -m "Removed submodule <submodule-path>"
+git push origin main
+```
+
+## Best Practices
+- Always **commit submodule updates** separately to track changes properly.
+- Use **sparse checkout** to avoid cluttering your repo with unnecessary files.
+- Regularly **update submodules** to stay in sync with their upstream repositories.
