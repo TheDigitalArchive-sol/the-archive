@@ -1,0 +1,19 @@
+[package]
+name = "light-writer-rs"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+serde       = { workspace = true, optional = true }
+serde_json  = { workspace = true, optional = true }
+regex       = { workspace = true, optional = true }
+dotenv      = { workspace = true, optional = true }
+sha2        = { workspace = true, optional = true }
+chrono      = { workspace = true, optional = true }
+aes         = { workspace = true, optional = true }
+rand        = { workspace = true, optional = true }
+zstd        = { workspace = true, optional = true }
+block-modes = { workspace = true, optional = true }
+
+[features]
+default = ["serde", "serde_json", "regex", "dotenv", "sha2", "chrono", "aes", "rand", "zstd", "block-modes"]

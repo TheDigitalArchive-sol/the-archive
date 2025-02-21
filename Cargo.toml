@@ -1,0 +1,19 @@
+[workspace]
+members = [
+    "light-writer-rs"
+]
+resolver = "2"
+
+[workspace.dependencies]
+
+# light-writers-rs
+serde        = { version = "1.0.217", features = ["derive"]}
+serde_json   = { version = "1.0.137" }
+regex        = { version = "1.11.1" }
+dotenv       = { version = "0.15" }
+sha2         = { version = "0.10.8" }
+chrono       = { version = "0.4.39" }
+aes          = { version = "0.7" }
+rand         = { version = "0.9.0" }
+zstd         = { version = "0.13.2" }
+block-modes  = { version = "0.8" }
