@@ -8,6 +8,9 @@ edition = "2021"
 crate-type = ["cdylib", "lib"]
 name = "book_storage"
 
+[deploy]
+book_storage = { max_len = 420000 }
+
 [features]
 default = []
 cpi = ["no-entrypoint"]
