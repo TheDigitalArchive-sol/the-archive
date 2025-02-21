@@ -5,7 +5,7 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-hogwarts_lib_rs = "FnopRi7du13hHM4b6K9kUeZwguqgznHUSaYGpPjg3sqJ"
+book-storage = "J3NbsLGamAXywfUm8ecKJedAXa7FoNAhSoq3XcNBCRAD"
 
 [registry]
 url = "https://api.apr.dev"
