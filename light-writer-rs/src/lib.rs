@@ -16,6 +16,7 @@ pub fn create_book_template_from_env(env_file_path: &str, json_path: &str, raw_b
     // ie
     // json_path: ../light-writer-rs/books-templates/simulated_book_chapter.json
     // raw_book_path: ../light-writer-rs/books-templates/simulated_book_chapter.txt
+    println!("{:?}", env_file_path);
     dotenv::from_path(env_file_path).expect("Failed to load .env file from the specified path");
     let metadata = populate_book_metadata();
     println!("{:?}", metadata);
