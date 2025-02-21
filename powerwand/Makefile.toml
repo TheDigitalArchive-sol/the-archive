@@ -1,0 +1,13 @@
+[tasks.build]
+command = "cargo"
+args = ["build", "--release"]
+
+
+[tasks.run]
+command = "cargo"
+args = ["run", "--release"]
+
+[tasks.book-storage-deploy]
+command = "sh"
+args = ["-c", "ENV_FILE=\"../../../powerwand/.env\"; touch \"$ENV_FILE\"; chmod +w \"$ENV_FILE\"; anchor deploy --program-name book-storage --provider.wallet ~/.solana-keypair/account0/keypair 2>&1 | tee /tmp/anchor_output.log; sleep 2; PROGRAM_ID=$(grep -o 'Program Id: [A-Za-z0-9]*' /tmp/anchor_output.log | awk '{print $3}'); echo \"Extracted Program ID: $PROGRAM_ID\"; if [ -n \"$PROGRAM_ID\" ]; then sed -i 's/^BOOK_STORAGE_PROGRAM_ID=.*/BOOK_STORAGE_PROGRAM_ID='\"$PROGRAM_ID\"'/' \"$ENV_FILE\"; sync; else echo \"❌ Failed to extract Program ID\" >&2; exit 1; fi"]
+cwd = "../hogwarts-lib-rs/programs/book-storage"
