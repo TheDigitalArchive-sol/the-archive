@@ -18,3 +18,4 @@ anyhow         = { workspace = true, optional = true }
 # Internal lib
 light-writer-rs = { path = "../light-writer-rs" }
 book-storage = { path = "../hogwarts-lib-rs/programs/book-storage" }
+book-cover = { path = "../hogwarts-lib-rs/programs/book-cover" }

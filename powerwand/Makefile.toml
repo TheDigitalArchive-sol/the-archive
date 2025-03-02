@@ -9,5 +9,10 @@ args = ["run", "--release"]
 
 [tasks.book-storage-deploy]
 command = "sh"
-args = ["-c", "ENV_FILE=\"../../../powerwand/.env\"; touch \"$ENV_FILE\"; chmod +w \"$ENV_FILE\"; anchor deploy --program-name book-storage --provider.wallet ~/.solana-keypair/account0/keypair 2>&1 | tee /tmp/anchor_output.log; sleep 2; PROGRAM_ID=$(grep -o 'Program Id: [A-Za-z0-9]*' /tmp/anchor_output.log | awk '{print $3}'); echo \"Extracted Program ID: $PROGRAM_ID\"; if [ -n \"$PROGRAM_ID\" ]; then sed -i 's/^BOOK_STORAGE_PROGRAM_ID=.*/BOOK_STORAGE_PROGRAM_ID='\"$PROGRAM_ID\"'/' \"$ENV_FILE\"; sync; else echo \"❌ Failed to extract Program ID\" >&2; exit 1; fi"]
+args = ["-c", "ENV_FILE=\"../../../powerwand/.env\"; touch \"$ENV_FILE\"; chmod +w \"$ENV_FILE\"; cp ~/dev/keypairs-test/book_storage-keypair.json ~/dev/the-archive/hogwarts-lib-rs/target/deploy; anchor deploy --program-name book-storage --program-keypair ~/dev/keypairs-test/book_storage-keypair.json --provider.wallet ~/.solana-keypair/account0/keypair 2>&1 | tee /tmp/anchor_output.log; sleep 2; PROGRAM_ID=$(grep -o 'Program Id: [A-Za-z0-9]*' /tmp/anchor_output.log | awk '{print $3}'); echo \"Extracted Program ID: $PROGRAM_ID\"; if [ -n \"$PROGRAM_ID\" ]; then sed -i 's/^BOOK_STORAGE_PROGRAM_ID=.*/BOOK_STORAGE_PROGRAM_ID='\"$PROGRAM_ID\"'/' \"$ENV_FILE\"; sync; else echo \"❌ Failed to extract Program ID\" >&2; exit 1; fi"]
 cwd = "../hogwarts-lib-rs/programs/book-storage"
+
+[tasks.book-cover-deploy]
+command = "sh"
+args = ["-c", "ENV_FILE=\"../../../powerwand/.env\"; touch \"$ENV_FILE\"; chmod +w \"$ENV_FILE\"; cp ~/dev/keypairs-test/book_storage-keypair.json ~/dev/the-archive/hogwarts-lib-rs/target/deploy; anchor deploy --program-name book-cover --program-keypair ~/dev/keypairs-test/book_cover-keypair.json --provider.wallet ~/.solana-keypair/account0/keypair 2>&1 | tee /tmp/anchor_output.log; sleep 2; PROGRAM_ID=$(grep -o 'Program Id: [A-Za-z0-9]*' /tmp/anchor_output.log | awk '{print $3}'); echo \"Extracted Program ID: $PROGRAM_ID\"; if [ -n \"$PROGRAM_ID\" ]; then sed -i 's/^BOOK_COVER_PROGRAM_ID=.*/BOOK_COVER_PROGRAM_ID='\"$PROGRAM_ID\"'/' \"$ENV_FILE\"; sync; else echo \"❌ Failed to extract Program ID\" >&2; exit 1; fi"]
+cwd = "../hogwarts-lib-rs/programs/book-cover"

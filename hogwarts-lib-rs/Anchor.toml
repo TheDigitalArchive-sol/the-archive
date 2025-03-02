@@ -5,7 +5,8 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-book-storage = "Fk3qBVpk9KCYunBMcdaCcUm3wA9zj7rgBtdu7mBU6CHc"
+book-storage = "8Besjdk7LVmnJfuCKAaM2sfAubbggvhgT597XFH8AXbj"
+book-cover = "CLcPEsey6Ej423NZWnX7WnxVvE6Adirry8psgET3tiiG"
 
 [registry]
 url = "https://api.apr.dev"
@@ -15,5 +16,4 @@ cluster = "Localnet"
 wallet = "~/.solana-keypair/account0/keypair"
 
 [scripts]
-# Deploy
 book-storage-deploy = "anchor build --program-name book-storage && anchor deploy --program-name book-storage --provider.wallet ~/.solana-keypair/account0/keypair"
