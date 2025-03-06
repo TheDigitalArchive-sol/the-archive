@@ -10,6 +10,8 @@ declare_id!("CLcPEsey6Ej423NZWnX7WnxVvE6Adirry8psgET3tiiG");
 
 #[program]
 pub mod book_cover {
+    use std::str::FromStr;
+
     use super::*;
 
     pub fn mint_nft(
@@ -19,21 +21,31 @@ pub mod book_cover {
         title: String,
     ) -> Result<()> {
         msg!("Initializing Mint Ticket");
+        msg!("Mint Authority: {}", ctx.accounts.mint_authority.key());
+        msg!("Mint Account: {}", ctx.accounts.mint.key());
+        msg!("Token Account: {}", ctx.accounts.token_account.key());
+        msg!("Metadata Account: {}", ctx.accounts.metadata.key());
+        msg!("Master Edition Account: {}", ctx.accounts.master_edition.key());
+        msg!("Payer Account: {}", ctx.accounts.payer.key());
+        msg!("Token Metadata Program: {}", ctx.accounts.token_metadata_program.key());
+        msg!("System Program: {}", ctx.accounts.system_program.key());
+        msg!("Rent Account: {}", ctx.accounts.rent.key());
+
         let cpi_accounts = MintTo {
             mint: ctx.accounts.mint.to_account_info(),
             to: ctx.accounts.token_account.to_account_info(),
-            authority: ctx.accounts.payer.to_account_info(),
+            authority: ctx.accounts.mint_authority.to_account_info(),
         };
         let cpi_program = ctx.accounts.token_program.to_account_info();
         let cpi_ctx = CpiContext::new(cpi_program, cpi_accounts);
         token::mint_to(cpi_ctx, 1)?;
         msg!("Token Minted!");
-
+    
         let creator = vec![
             Creator {
                 address: solana_program::pubkey::Pubkey::new_from_array(creator_key.to_bytes()),
-                verified: false,
-                share: 100,
+            verified: false,
+            share: 100,
             },
             Creator {
                 address: solana_program::pubkey::Pubkey::new_from_array(ctx.accounts.mint_authority.key().to_bytes()),
@@ -71,38 +83,38 @@ pub mod book_cover {
                 update_authority: (solana_program::pubkey::Pubkey::new_from_array(ctx.accounts.payer.key().to_bytes()), true),
                 system_program: solana_program::pubkey::Pubkey::new_from_array(ctx.accounts.system_program.key().to_bytes()),
                 rent: Some(solana_program::pubkey::Pubkey::new_from_array(ctx.accounts.rent.key().to_bytes())),
-            }
-            .instruction(CreateMetadataAccountV3InstructionArgs {
-                data: DataV2 {
-                    name: title,
+        }
+        .instruction(CreateMetadataAccountV3InstructionArgs {
+            data: DataV2 {
+                name: title,
                     symbol,
-                    uri,
-                    seller_fee_basis_points: 1,
-                    creators: Some(creator),
-                    collection: None,
-                    uses: None,
-                },
-                is_mutable: true,
-                collection_details: None,
+                uri,
+                seller_fee_basis_points: 1,
+                creators: Some(creator),
+                collection: None,
+                uses: None,
+            },
+            is_mutable: true,
+            collection_details: None,
             })
             .data,
         };
-
+    
         invoke(
             &metadata_instruction,  // Correct Anchor instruction usage
             metadata_accounts.as_slice(),
         )?;
         msg!("Metadata Account Created!");
-
+    
         let master_edition_accounts = vec![
-            ctx.accounts.master_edition.to_account_info(),
-            ctx.accounts.mint.to_account_info(),
-            ctx.accounts.mint_authority.to_account_info(),
-            ctx.accounts.payer.to_account_info(),
-            ctx.accounts.metadata.to_account_info(),
-            ctx.accounts.token_metadata_program.to_account_info(),
-            ctx.accounts.system_program.to_account_info(),
-            ctx.accounts.rent.to_account_info(),
+                ctx.accounts.master_edition.to_account_info(),
+                ctx.accounts.mint.to_account_info(),
+                ctx.accounts.mint_authority.to_account_info(),
+                ctx.accounts.payer.to_account_info(),
+                ctx.accounts.metadata.to_account_info(),
+                ctx.accounts.token_metadata_program.to_account_info(),
+                ctx.accounts.system_program.to_account_info(),
+                ctx.accounts.rent.to_account_info(),
         ];
 
         let master_edition_instruction = Instruction {
@@ -134,7 +146,7 @@ pub mod book_cover {
             &master_edition_instruction,  // Correct Anchor instruction usage
             master_edition_accounts.as_slice(),
         )?;
-        
+    
         msg!("Master Edition NFT Minted!");
 
         Ok(())

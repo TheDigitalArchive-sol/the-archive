@@ -4,12 +4,16 @@ use anchor_client::solana_sdk::{
 };
 use anchor_client::{Client, Cluster};
 use anchor_lang::prelude::Pubkey;
+use anchor_spl::token::spl_token;
 use dotenv::dotenv;
 use light_writer_rs::{create_book_template_from_env, light_msg_decryption, light_msg_encryption};
 use std::{env, error::Error, rc::Rc, str::FromStr, sync::Arc, time::Duration};
 use storage_manager::{
     check_storage_account, create_storage_account, retrieve_stored_data, store_data_in_chunks,
 };
+
+mod nft_manager;
+use nft_manager::{ mint_nft};
 use tokio::time::sleep;
 mod storage_manager;
 
@@ -23,12 +27,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
         env::var("GENESIS_KEYPAIR_PATH").expect("GENESIS_KEYPAIR_PATH not set")
     );
 
-    let genesis_keypair = Arc::new(
-        Keypair::read_from_file(&genesis_mnemonic_path)
-            .expect("Failed to generate Keypair from seed"),
-    );
-    let client: Client<Rc<&Arc<Keypair>>> =
-        Client::new(Cluster::Localnet, Rc::new(&genesis_keypair));
+    let genesis_keypair = Arc::new(Keypair::read_from_file(&genesis_mnemonic_path).expect("Failed to generate Keypair from seed"));
+    let client: Client<Rc<&Arc<Keypair>>> =Client::new(Cluster::Localnet, Rc::new(&genesis_keypair));
     let genesis_pubkey = genesis_keypair.pubkey();
     println!("genesis_pubkey: {:?}", genesis_pubkey);
 
@@ -46,6 +46,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     let sb_program_id = Pubkey::from_str(
         &env::var("BOOK_STORAGE_PROGRAM_ID").expect("BOOK_STORAGE_PROGRAM_ID not set"),
+    )
+    .unwrap();
+    let cb_program_id = Pubkey::from_str(
+        &env::var("BOOK_COVER_PROGRAM_ID").expect("BOOK_COVER_PROGRAM_ID not set"),
     )
     .unwrap();
     let storage_account = Keypair::new();
@@ -69,12 +73,42 @@ async fn main() -> Result<(), Box<dyn Error>> {
     )
     .await;
     sleep(Duration::from_secs(20)).await;
-    let stored_data = retrieve_stored_data(&client, sb_program_id, storage_acc_kp)
-        .await
-        .unwrap();
-    let decrypted_data = light_msg_decryption(&key, stored_data).expect("Failed to decrypt data");
+    let mint_account_keypair = Keypair::new();
 
-    println!("📖 Decompressed data: {:?}", decrypted_data);
+    // let mint_account_pubkey = create_mint_account(
+    //     &client,
+    //     &genesis_keypair,
+    //     &mint_account_keypair,
+    //     &genesis_pubkey,
+    //     spl_token::ID,
+    // )
+    // .await;
+    // println!("mint_pubkey: {:?}", mint_account_pubkey);
+    
+    let metaplex_program_id = Pubkey::from_str(&env::var("MPL_TOKEN_METADATA_PROGRAM_ID").expect("BOOK_COVER_PROGRAM_ID not set")).unwrap();
+    println!("metaplex_program_id: {:?}", metaplex_program_id);
+
+    let a = mint_nft(
+        &client,
+        &genesis_keypair, // ✅ This should be the payer and match the mint authority
+        &mint_account_keypair,
+        cb_program_id,
+        "uri".to_string(),
+        "The Digital Archive".to_string(),
+        "SYM".to_string(),
+        metaplex_program_id,
+        spl_token::ID,
+    );    println!("LOG_TMP: {:?}", a);
+    // let token_account = anchor_spl::associated_token::get_associated_token_address(&genesis_keypair.pubkey(), &mint_account_pubkey);
+    // println!("token_account: {:?}", token_account);
+
+    // // let nft = mint_nft(&client, &genesis_keypair, ).await;
+    // let stored_data = retrieve_stored_data(&client, sb_program_id, storage_acc_kp)
+    //     .await
+    //     .unwrap();
+    // let decrypted_data = light_msg_decryption(&key, stored_data).expect("Failed to decrypt data");
+
+    // println!("📖 Decompressed data: {:?}", decrypted_data);
 
     Ok(())
 }

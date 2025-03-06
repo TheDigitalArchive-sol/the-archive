@@ -10,12 +10,16 @@ dotenv         = { workspace = true }
 zstd           = { workspace = true, optional = true }
 anchor-client  = { workspace = true }
 anchor-lang    = { workspace = true }
-solana-sdk     = { workspace = true, optional = true }
+# solana-sdk     = { workspace = true, optional = true }
 tokio          = { workspace = true }
 hex            = { workspace = true, optional = true }
 anyhow         = { workspace = true, optional = true }
-
+anchor-spl     = { workspace = true }
+mpl-token-metadata  = { workspace = true }
+solana-program = "2.2.1" 
+solana-sdk = "2.2.1"
 # Internal lib
 light-writer-rs = { path = "../light-writer-rs" }
-book-storage = { path = "../hogwarts-lib-rs/programs/book-storage" }
-book-cover = { path = "../hogwarts-lib-rs/programs/book-cover" }
+book-cover = { path = "../hogwarts-lib-rs/programs/book-cover", features = ["no-entrypoint"] }
+book-storage = { path = "../hogwarts-lib-rs/programs/book-storage", features = ["no-entrypoint"] }
+
