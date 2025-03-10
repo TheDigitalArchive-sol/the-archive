@@ -1,3 +1,11 @@
+/* This is the global stylesheet where you define base styles for the whole application.
+
+What it should contain:
+Global styles (e.g., body font, background colors, etc.).
+CSS resets to ensure consistent styling across browsers.
+Utility classes like margins, padding, or common font styles. 
+*/
+
 @import "tailwindcss";
 
 :root {
