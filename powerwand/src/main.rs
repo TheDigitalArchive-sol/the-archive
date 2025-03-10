@@ -1,6 +1,6 @@
 use anchor_client::solana_sdk::{
     signature::Keypair,
-    signer::{EncodableKey, Signer},
+    signer::{EncodableKey, SeedDerivable, Signer},
 };
 use anchor_client::{Client, Cluster};
 use anchor_lang::prelude::Pubkey;
@@ -88,9 +88,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let metaplex_program_id = Pubkey::from_str(&env::var("MPL_TOKEN_METADATA_PROGRAM_ID").expect("BOOK_COVER_PROGRAM_ID not set")).unwrap();
     println!("metaplex_program_id: {:?}", metaplex_program_id);
 
-    let a = mint_nft(
+    let nft_owner = Keypair::from_seed_phrase_and_passphrase(&env::var("NFT_OWNER_MNEMO").expect("NFT_OWNER_MNEMO not set"), "").unwrap();
+    let _ = mint_nft(
         &client,
-        &genesis_keypair, // ✅ This should be the payer and match the mint authority
+        &genesis_keypair, // this should be the nft owner after faucet
         &mint_account_keypair,
         cb_program_id,
         "uri".to_string(),
@@ -98,7 +99,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
         "SYM".to_string(),
         metaplex_program_id,
         spl_token::ID,
-    );    println!("LOG_TMP: {:?}", a);
+    ).unwrap();
+    println!("NFT Owner: {:?}", nft_owner.pubkey());
     // let token_account = anchor_spl::associated_token::get_associated_token_address(&genesis_keypair.pubkey(), &mint_account_pubkey);
     // println!("token_account: {:?}", token_account);
 
