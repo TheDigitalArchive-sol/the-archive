@@ -34,44 +34,37 @@ export default function Home() {
               try {
                   console.log("✅ Connected Wallet:", wallet.publicKey.toBase58());
   
-                  if (module.AnchorBridge.length === 2) {
-                      console.log("🔍 Using PublicKey-only mode for AnchorBridge.");
-                      const bridge = new module.AnchorBridge(wallet.publicKey.toBytes(), PROGRAM_ID);
-                      setAnchorBridge(bridge);
-                  } else {
-                      console.error("❌ AnchorBridge requires a full Keypair, cannot use wallet directly.");
-                  }
+                  const bridge = new module.AnchorBridge(wallet.publicKey.toBase58(), PROGRAM_ID);
+                  setAnchorBridge(bridge);
               } catch (error) {
                   console.error("❌ Error using wallet as payer:", error);
               }
           }
       }).catch((error) => console.error("❌ Error loading WASM module:", error));
   }, [wallet]);
-  
 
-//   const initializeStorageAccount = async () => {
-//     if (!anchorBridge || !wallet.signTransaction) {
-//         console.warn("⚠️ AnchorBridge instance or wallet signer not available.");
-//         return;
-//     }
+  const initializeStorageAccount = async () => {
+    if (!anchorBridge || !wallet.signTransaction) {
+        console.warn("⚠️ AnchorBridge instance or wallet signer not available.");
+        return;
+    }
 
-//     try {
-//         const seed = "my_seed"; // Change this to an actual seed
-//         const totalSize = 1024;
-//         const totalChunks = 10;
+    try {
+        const seed = "my_seed";
+        const totalSize = 1024;
+        const totalChunks = 10;
 
-//         // Call the Rust function to get the transaction
-//         let tx = await anchorBridge.initialize_storage_account(seed, totalSize, totalChunks);
+        let tx = await anchorBridge.initialize_storage_account(seed, totalSize, totalChunks);
 
-//         tx = await wallet.signTransaction(tx);
+        tx = await wallet.signTransaction(tx);
 
-//         console.log("✅ Storage Account Initialized & Signed Transaction:", tx);
-//         setInitResponse(`Success: ${tx.signature}`);
-//     } catch (error) {
-//         console.error("❌ Error initializing storage account:", error);
-//         setInitResponse("Error initializing storage account.");
-//     }
-// };
+        console.log("✅ Storage Account Initialized & Signed Transaction:", tx);
+        setInitResponse(`Success: ${tx.signature}`);
+    } catch (error) {
+        console.error("❌ Error initializing storage account:", error);
+        setInitResponse("Error initializing storage account.");
+    }
+};
 
     const fetchBalance = async () => {
       if (!wallet.publicKey) return;
@@ -132,12 +125,12 @@ export default function Home() {
       )}
 
       {/* Button to initialize storage account */}
-      {/* <button
+      <button
           onClick={initializeStorageAccount}
           className="bg-yellow-500 hover:bg-yellow-600 text-black font-bold px-6 py-3 rounded-lg shadow-lg transition-all"
       >
         🚀 Initialize Storage Account
-        </button> */}
+        </button>
           </div>
   );
 }
