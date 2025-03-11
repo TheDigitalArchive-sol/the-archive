@@ -1,17 +1,24 @@
-use anchor_lang::AnchorSerialize;
 use solana_sdk::instruction::{AccountMeta, Instruction};
 use solana_sdk::message::Message;
 use solana_sdk::pubkey::Pubkey;
 use solana_sdk::signer::Signer;
-use solana_sdk::system_program;
 use solana_sdk::transaction::Transaction;
 use wasm_bindgen::prelude::*;
 use solana_sdk::signer::keypair::Keypair;
 use wasm_bindgen_futures::js_sys::Promise;
 use wasm_bindgen_futures::{future_to_promise, wasm_bindgen};
 use std::sync::Arc;
-use book_storage::instruction::StoreData;
-use book_storage::instruction::Initialize as InitializeInstr;
+use borsh::{BorshDeserialize, BorshSerialize};
+
+#[derive(BorshSerialize, BorshDeserialize)]
+struct InitializeInstr {
+    total_size: u32,
+    total_chunks: u32,
+}
+#[derive(BorshSerialize, BorshDeserialize)]
+struct StoreData {
+    value: Vec<u8>
+}
 
 #[wasm_bindgen]
 pub struct AnchorBridge {
@@ -41,22 +48,16 @@ impl AnchorBridge {
             let (storage_account_pubkey, _bump) = Pubkey::find_program_address(&[seed.as_bytes()], &program_id);
             let mut transactions = Vec::new();
 
-            let instruction = Instruction {
+            let instr = Instruction::new_with_borsh(
                 program_id,
-                accounts: vec![
-                    AccountMeta::new(storage_account_pubkey, false),
-                    AccountMeta::new(payer.pubkey(), true),
-                    AccountMeta::new_readonly(system_program::ID, false),
+                &InitializeInstr { total_size, total_chunks },
+                vec![
+                    AccountMeta::new(storage_account_pubkey, true),
+                    AccountMeta::new(payer.pubkey(), false),
                 ],
-                data: InitializeInstr {
-                    total_size,
-                    total_chunks,
-                }
-                .try_to_vec()
-                .expect("Failed to serialize instruction"),
-            };
+           );
 
-            let message = Message::new(&[instruction], Some(&payer.pubkey()));
+            let message = Message::new(&[instr], Some(&payer.pubkey()));
             let tx = Transaction::new_unsigned(message);
             transactions.push(tx);
 
@@ -80,19 +81,18 @@ impl AnchorBridge {
             for (_i, chunk) in data.chunks(CHUNK_SIZE).enumerate() {
                 let chunk_vec = chunk.to_vec();
 
-                let instruction: Instruction = Instruction {
-                    program_id,
-                    accounts: vec![AccountMeta {
-                        pubkey: storage_account_pubkey,
-                        is_signer: true,
-                        is_writable: false
-                    }],
-                    data: StoreData { value: chunk_vec }
-                        .try_to_vec()
-                        .expect("Failed to serialize instruction"),
-                };
 
-                let message= Message::new(&[instruction], Some(&payer.pubkey()));
+
+                let instr = Instruction::new_with_borsh(
+                    program_id,
+                    &StoreData { value: chunk_vec },
+                    vec![
+                        AccountMeta::new(storage_account_pubkey, true),
+                        AccountMeta::new(payer.pubkey(), false),
+                    ],
+               );
+
+                let message= Message::new(&[instr], Some(&payer.pubkey()));
                 let tx = Transaction::new_unsigned(message);
                 transactions.push(tx);
             }

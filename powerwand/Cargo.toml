@@ -13,10 +13,14 @@ solana-sdk            = { workspace = true }
 hex                   = { workspace = true, optional = true }
 anyhow                = { workspace = true, optional = true }
 wasm-bindgen-futures  = { workspace = true}
+borsh                 = { workspace = true}
 
 # Internal lib
 light-writer-rs = { path = "../light-writer-rs" }
 book-storage = { path = "../hogwarts-lib-rs/programs/book-storage" }
+
+[lib]
+crate-type = ["cdylib", "rlib"]
 
 [features]
 default = []

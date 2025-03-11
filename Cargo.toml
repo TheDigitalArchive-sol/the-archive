@@ -19,10 +19,10 @@ dotenv       = { version = "0.15" }
 zstd         = { version = "0.13.2" }
 
 # powerwand
-anchor-client         = { version = "0.30.1 ", features = ["async"], default-features = false }
 anchor-lang           = { version = "0.30.1"}
 solana-sdk            = { version = "2.1.12"}
-tokio                 = { version = "1.43.0", features = ["full"], default-features = false }
 hex                   = { version = "0.4.3"}
 anyhow                = { version = "1.0.95"}
-wasm-bindgen-futures  = { version = "0.4"}
+wasm-bindgen-futures  = { version = "0.4.50"}
+borsh                 = { version = "1.5.5"}
+
