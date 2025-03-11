@@ -22,26 +22,26 @@ struct StoreData {
 
 #[wasm_bindgen]
 pub struct AnchorBridge {
-    payer: Arc<Keypair>,
+    payer_pubkey: Pubkey,
     sb_program_id: Pubkey,
 }
 
 #[wasm_bindgen]
 impl AnchorBridge {
     #[wasm_bindgen(constructor)]
-    pub fn new(payer_bytes: Vec<u8>, sb_program_id: String) -> Self {
-        let payer = Keypair::from_bytes(&payer_bytes).expect("Invalid keypair");
+    pub fn new(payer_pubkey: String, sb_program_id: String) -> Self {
+        let payer_pubkey = payer_pubkey.parse().expect("Invalid public key");
         let sb_program_id = sb_program_id.parse().expect("Invalid program ID");
 
         Self {
-            payer: Arc::new(payer),
+            payer_pubkey,
             sb_program_id,
         }
     }
 
     #[wasm_bindgen]
     pub fn initialize_storage_account(&self, seed: String, total_size: u32, total_chunks: u32) -> Promise {
-        let payer = self.payer.clone();
+        let payer = self.payer_pubkey.clone();
         let program_id = self.sb_program_id;
         
         future_to_promise(async move {
@@ -53,11 +53,11 @@ impl AnchorBridge {
                 &InitializeInstr { total_size, total_chunks },
                 vec![
                     AccountMeta::new(storage_account_pubkey, true),
-                    AccountMeta::new(payer.pubkey(), false),
+                    AccountMeta::new(payer, false),
                 ],
            );
 
-            let message = Message::new(&[instr], Some(&payer.pubkey()));
+            let message = Message::new(&[instr], Some(&payer));
             let tx = Transaction::new_unsigned(message);
             transactions.push(tx);
 
@@ -71,7 +71,7 @@ impl AnchorBridge {
         let storage_account_pubkey = storage_account_pubkey
             .parse::<Pubkey>()
             .expect("Invalid pubkey");
-        let payer = self.payer.clone();
+        let payer = self.payer_pubkey.clone();
         let program_id: Pubkey = self.sb_program_id;
 
         future_to_promise(async move {
@@ -88,11 +88,11 @@ impl AnchorBridge {
                     &StoreData { value: chunk_vec },
                     vec![
                         AccountMeta::new(storage_account_pubkey, true),
-                        AccountMeta::new(payer.pubkey(), false),
+                        AccountMeta::new(payer, false),
                     ],
                );
 
-                let message= Message::new(&[instr], Some(&payer.pubkey()));
+                let message= Message::new(&[instr], Some(&payer));
                 let tx = Transaction::new_unsigned(message);
                 transactions.push(tx);
             }
