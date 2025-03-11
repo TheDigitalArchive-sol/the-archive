@@ -4,18 +4,74 @@ import { useState, useEffect } from "react";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { Connection, PublicKey } from "@solana/web3.js";
-import { useProgram, useProvider } from "./utils";
+import { useProvider } from "./utils";
 import { Program, Idl } from "@project-serum/anchor";
 
 export default function Home() {
     const [isClient, setIsClient] = useState(false);
-
+    const [wasm, setWasm] = useState<any | null>(null);
+    const [anchorBridge, setAnchorBridge] = useState<any | null>(null);
+    const [initResponse, setInitResponse] = useState<string | null>(null);
     const wallet = useWallet();
     const [balance, setBalance] = useState<number | null>(null);
     const [loading, setLoading] = useState(false);
     const [program, setProgram] = useState<Program<Idl> | null>(null);
 
     const connection = new Connection("http://127.0.0.1:8899");
+    const PROGRAM_ID = "8Besjdk7LVmnJfuCKAaM2sfAubbggvhgT597XFH8AXbj";
+
+    useEffect(() => {
+      if (!PROGRAM_ID) {
+          console.error("❌ Missing PROGRAM_ID!");
+          return;
+      }
+  
+      import("/home/rzanei/dev/the-archive/powerwand/pkg/powerwand.js").then(async (module) => {
+          await module.default();
+          setWasm(module);
+  
+          if (wallet.connected && wallet.publicKey) {
+              try {
+                  console.log("✅ Connected Wallet:", wallet.publicKey.toBase58());
+  
+                  if (module.AnchorBridge.length === 2) {
+                      console.log("🔍 Using PublicKey-only mode for AnchorBridge.");
+                      const bridge = new module.AnchorBridge(wallet.publicKey.toBytes(), PROGRAM_ID);
+                      setAnchorBridge(bridge);
+                  } else {
+                      console.error("❌ AnchorBridge requires a full Keypair, cannot use wallet directly.");
+                  }
+              } catch (error) {
+                  console.error("❌ Error using wallet as payer:", error);
+              }
+          }
+      }).catch((error) => console.error("❌ Error loading WASM module:", error));
+  }, [wallet]);
+  
+
+//   const initializeStorageAccount = async () => {
+//     if (!anchorBridge || !wallet.signTransaction) {
+//         console.warn("⚠️ AnchorBridge instance or wallet signer not available.");
+//         return;
+//     }
+
+//     try {
+//         const seed = "my_seed"; // Change this to an actual seed
+//         const totalSize = 1024;
+//         const totalChunks = 10;
+
+//         // Call the Rust function to get the transaction
+//         let tx = await anchorBridge.initialize_storage_account(seed, totalSize, totalChunks);
+
+//         tx = await wallet.signTransaction(tx);
+
+//         console.log("✅ Storage Account Initialized & Signed Transaction:", tx);
+//         setInitResponse(`Success: ${tx.signature}`);
+//     } catch (error) {
+//         console.error("❌ Error initializing storage account:", error);
+//         setInitResponse("Error initializing storage account.");
+//     }
+// };
 
     const fetchBalance = async () => {
       if (!wallet.publicKey) return;
@@ -74,6 +130,14 @@ export default function Home() {
           </button>
         </div>
       )}
+
+      {/* Button to initialize storage account */}
+      {/* <button
+          onClick={initializeStorageAccount}
+          className="bg-yellow-500 hover:bg-yellow-600 text-black font-bold px-6 py-3 rounded-lg shadow-lg transition-all"
+      >
+        🚀 Initialize Storage Account
+        </button> */}
           </div>
   );
 }
