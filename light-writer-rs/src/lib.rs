@@ -1,6 +1,5 @@
 pub mod book_types;
 use book_types::{BookMetadata, Chapter, Page};
-use rand::{rng, RngCore};
 use sha2::{Digest, Sha256};
 use std::{cmp::min, env, fs::{self, File}, io::{self, Read, Write}, path::Path};
 use regex::Regex;
@@ -184,7 +183,8 @@ pub fn light_msg_encryption(key: &str, json_file_path: &str) -> io::Result<Vec<u
     let book_metadata: BookMetadata = serde_json::from_str(&content)?;
     let serialized_content = serde_json::to_string(&book_metadata)?;
     let mut iv = [0u8; 16];
-    rng().fill_bytes(&mut iv);
+    let hash = Sha256::digest(serialized_content.as_bytes());
+    iv.copy_from_slice(&hash[..16]);
     let cipher = Aes256Cbc::new_from_slices(key.as_bytes(), &iv).map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
     let encrypted_bytes = cipher.encrypt_vec(serialized_content.as_bytes());
     let mut data_with_iv = iv.to_vec();
