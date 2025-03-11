@@ -4,17 +4,20 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-serde          = { workspace = true, optional = true }
-serde_json     = { workspace = true, optional = true }
-dotenv         = { workspace = true }
-zstd           = { workspace = true, optional = true }
-anchor-client  = { workspace = true }
-anchor-lang    = { workspace = true }
-solana-sdk     = { workspace = true, optional = true }
-tokio          = { workspace = true }
-hex            = { workspace = true, optional = true }
-anyhow         = { workspace = true, optional = true }
+serde                 = { workspace = true, optional = true }
+serde_json            = { workspace = true, optional = true }
+dotenv                = { workspace = true }
+zstd                  = { workspace = true, optional = true }
+anchor-lang           = { workspace = true}
+solana-sdk            = { workspace = true }
+hex                   = { workspace = true, optional = true }
+anyhow                = { workspace = true, optional = true }
+wasm-bindgen-futures  = { workspace = true}
 
 # Internal lib
 light-writer-rs = { path = "../light-writer-rs" }
 book-storage = { path = "../hogwarts-lib-rs/programs/book-storage" }
+
+[features]
+default = []
+wasm = []

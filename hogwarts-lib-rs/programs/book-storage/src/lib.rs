@@ -12,6 +12,8 @@ pub mod book_storage {
     pub fn initialize(ctx: Context<Initialize>, total_size: u32, total_chunks: u32) -> Result<()> {
         let storage_account = &mut ctx.accounts.storage_account;
         let total_storage_size = total_size * total_chunks; 
+        let expected_pda = Pubkey::find_program_address(&[b"book_storage"], ctx.program_id).0;
+        require_keys_eq!(storage_account.key(), expected_pda, ErrorCode::InvalidStorageAccount);
     
         storage_account.total_size = total_storage_size;
         storage_account.total_chunks = total_chunks;
@@ -74,9 +76,11 @@ pub struct StorageAccount {
 #[instruction(total_size: u32, total_chunks: u32)]
 pub struct Initialize<'info> {
     #[account(
-        init, 
-        payer = user, 
-        space = 8 + 4 + 4 + (total_size as usize * total_chunks as usize)
+        init,
+        payer = user,
+        space = 8 + 4 + 4 + (total_size as usize * total_chunks as usize),
+        seeds = [b"book_storage"], // PDA Seed
+        bump
     )]
     pub storage_account: Account<'info, StorageAccount>,
     #[account(mut)]
@@ -97,4 +101,6 @@ pub struct StoreData<'info> {
 pub enum ErrorCode {
     #[msg("Storage limit exceeded.")]
     StorageLimitExceeded,
+    #[msg("Invalid storage account PDA.")]
+    InvalidStorageAccount,
 }
