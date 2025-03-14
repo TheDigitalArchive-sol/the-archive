@@ -9,7 +9,11 @@ const MAX_REALLOC_STEP: usize = 10_240;
 pub mod book_storage {
     use super::*;
 
-    pub fn initialize(ctx: Context<Initialize>, total_size: u32, total_chunks: u32) -> Result<()> {
+    pub fn initialize(ctx: Context<Initialize>, seed: String, total_size: u32, total_chunks: u32) -> Result<()> {
+        msg!("✅ Instruction: Initialize");
+        msg!("📌 Seed: {}", seed);
+        msg!("📌 Total Size: {}", total_size);
+        msg!("📌 Total Chunks: {}", total_chunks);
         let storage_account = &mut ctx.accounts.storage_account;
         let total_storage_size = total_size * total_chunks; 
         let expected_pda = Pubkey::find_program_address(&[b"book_storage"], ctx.program_id).0;

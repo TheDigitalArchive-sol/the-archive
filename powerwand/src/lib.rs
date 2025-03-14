@@ -42,13 +42,17 @@ impl AnchorBridge {
         let program_id = self.sb_program_id;
         
         future_to_promise(async move {
-            let seed_bytes = seed.as_bytes();
-        let (storage_account_pubkey, _bump) = Pubkey::find_program_address(&[seed_bytes], &program_id); 
-            let mut instr_data = vec![];
-            instr_data.extend_from_slice(&(seed.len() as u32).to_le_bytes());
-            instr_data.extend_from_slice(&total_size.to_le_bytes());
-            instr_data.extend_from_slice(&total_chunks.to_le_bytes());
-    
+
+        let (storage_account_pubkey, _bump) = Pubkey::find_program_address(&[seed.as_bytes()], &program_id); 
+        let mut instr_data = vec![];
+        let discriminator = solana_sdk::hash::hash(b"global:initialize").to_bytes();
+        
+        instr_data.extend_from_slice(&discriminator[..8]); // First 8 bytes = instruction discriminator
+        instr_data.extend_from_slice(&(seed.len() as u32).to_le_bytes()); // Encode seed length
+        instr_data.extend_from_slice(seed.as_bytes()); // Encode seed
+        instr_data.extend_from_slice(&total_size.to_le_bytes()); // Encode total_size
+        instr_data.extend_from_slice(&total_chunks.to_le_bytes()); // Encode total_chunks
+
         let instr = Instruction {
             program_id,
             accounts: vec![
