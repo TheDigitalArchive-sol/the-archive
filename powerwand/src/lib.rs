@@ -48,7 +48,7 @@ impl AnchorBridge {
                 program_id,
                 &InitializeInstr { total_size, total_chunks },
                 vec![
-                    AccountMeta::new(storage_account_pubkey, true),
+                    AccountMeta::new(storage_account_pubkey, false),
                     AccountMeta::new(payer, true),
                 ],
             );
