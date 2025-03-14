@@ -1,6 +1,5 @@
 use solana_sdk::instruction::{AccountMeta, Instruction};
 use solana_sdk::message::Message;
-use solana_sdk::packet::Encode;
 use solana_sdk::pubkey::Pubkey;
 use solana_sdk::transaction::Transaction;
 use wasm_bindgen::prelude::*;
@@ -45,26 +44,20 @@ impl AnchorBridge {
         future_to_promise(async move {
             let (storage_account_pubkey, _bump) = Pubkey::find_program_address(&[seed.as_bytes()], &program_id);
 
-            let instr = Instruction::new_with_bytes(
+            let instr = Instruction::new_with_borsh(
                 program_id,
-                &[], // Empty bytes (fix: replace with actual instruction data if needed)
+                &InitializeInstr { total_size, total_chunks },
                 vec![
                     AccountMeta::new(storage_account_pubkey, true),
-                    AccountMeta::new(payer, false),
+                    AccountMeta::new(payer, true),
                 ],
             );
 
             let message = Message::new(&[instr], Some(&payer));
-            let tx = Transaction::new_unsigned(message);
-
-            // ✅ Serialize transaction using Solana SDK's built-in method
-            let tx_bytes = vec![];
-            tx.encode(tx_bytes.clone()).unwrap();//.serialize(&mut tx_bytes).expect("Failed to serialize transaction");
-
-            // ✅ Encode as `base64`
+            let tx: Transaction = Transaction::new_unsigned(message);
+            let tx_bytes = tx.message_data();
             let tx_base64 = base64::encode(tx_bytes);
 
-            // ✅ Convert to `JsValue` and return as string
             Ok(JsValue::from_str(&tx_base64))
         })
     }
