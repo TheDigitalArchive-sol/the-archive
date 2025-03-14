@@ -6,7 +6,7 @@ import { useWallet } from "@solana/wallet-adapter-react";
 import { Connection, PublicKey } from "@solana/web3.js";
 import { useProvider } from "./utils";
 import { Program, Idl } from "@project-serum/anchor";
-import { Transaction, Message } from "@solana/web3.js";
+import { Transaction, Message, VersionedTransaction } from "@solana/web3.js";
 
 export default function Home() {
   const [isClient, setIsClient] = useState(false);
@@ -20,7 +20,7 @@ export default function Home() {
 
   const [pdaAddress, setPdaAddress] = useState<string | null>(null);
   const [txId, setTxId] = useState<string | null>(null);
-  const [availableSpace, setAvailableSpace] = useState<number | null>(null);
+  const [bookContent, setBookContent] = useState("");
 
   const connection = new Connection("http://127.0.0.1:8899");
   const PROGRAM_ID = "8Besjdk7LVmnJfuCKAaM2sfAubbggvhgT597XFH8AXbj";
@@ -99,6 +99,58 @@ export default function Home() {
     }
   };
 
+  const storeDataInChunks = async () => {
+    if (!anchorBridge || !wallet.signTransaction || !connection || !pdaAddress) {
+        console.warn("⚠️ Storage account not initialized or wallet unavailable.");
+        return;
+    }
+
+    try {
+        if (!bookContent.trim()) {
+            console.warn("⚠️ No content to store.");
+            return;
+        }
+
+        const encoder = new TextEncoder();
+        const bookData = encoder.encode(bookContent);
+
+        console.log(`📖 Preparing to store ${bookData.length} bytes of data.`);
+        const txsBase64 = await anchorBridge.store_data_in_chunks(pdaAddress, bookData, 900);
+        console.log("🔍 Raw WASM output:", txsBase64);
+
+        if (!Array.isArray(txsBase64) || txsBase64.length === 0) {
+            throw new Error("Received invalid transaction data from WASM.");
+        }
+
+        let signedTransactions = [];
+
+        for (const txBase64 of txsBase64) {
+            const txMessageBytes = Buffer.from(txBase64, "base64");
+            let reconstructedTx = Transaction.populate(Message.from(txMessageBytes));
+
+            const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
+            reconstructedTx.recentBlockhash = blockhash;
+            reconstructedTx.lastValidBlockHeight = lastValidBlockHeight;
+
+            const signedTransaction = await wallet.signTransaction(reconstructedTx);
+            signedTransactions.push(signedTransaction);
+        }
+
+        for (const signedTx of signedTransactions) {
+            const txId = await connection.sendRawTransaction(signedTx.serialize(), {
+                skipPreflight: false,
+                preflightCommitment: "confirmed",
+            });
+            console.log("✅ Sent transaction:", txId);
+        }
+
+        console.log("🎉 All book content stored successfully!");
+
+    } catch (error) {
+        console.error("❌ Error storing data:", error);
+    }
+};  
+
   const fetchBalance = async () => {
     if (!wallet.publicKey) return;
     setLoading(true);
@@ -172,6 +224,23 @@ export default function Home() {
           {txId && <p>🔗 <b>Transaction ID:</b> <a target="_blank" className="text-blue-400 underline">{txId}</a></p>}
         </div>
       )}
+
+
+      <div className="mt-6 w-full max-w-2xl">
+        <textarea
+          className="w-full h-48 bg-gray-800 text-white p-4 rounded-lg shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          placeholder="Write your book content here..."
+          value={bookContent}
+          onChange={(e) => setBookContent(e.target.value)}
+        ></textarea>
+
+        <button
+          onClick={storeDataInChunks}
+          className="mt-4 bg-green-500 hover:bg-green-600 text-white font-bold px-6 py-3 rounded-lg shadow-lg transition-all w-full"
+        >
+          📩 Submit Book Content
+        </button>
+      </div>
     </div>
   );
 }
