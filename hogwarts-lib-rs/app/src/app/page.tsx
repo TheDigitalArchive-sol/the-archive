@@ -6,7 +6,7 @@ import { useWallet } from "@solana/wallet-adapter-react";
 import { Connection, PublicKey } from "@solana/web3.js";
 import { useProvider } from "./utils";
 import { Program, Idl } from "@project-serum/anchor";
-import { Transaction } from "@solana/web3.js";
+import { Transaction, Message } from "@solana/web3.js";
 
 export default function Home() {
     const [isClient, setIsClient] = useState(false);
@@ -45,8 +45,8 @@ export default function Home() {
   }, [wallet]);
 
   const initializeStorageAccount = async () => {
-    if (!anchorBridge || !wallet.signTransaction) {
-        console.warn("⚠️ AnchorBridge instance or wallet signer not available.");
+    if (!anchorBridge || !wallet.signTransaction || !connection) {
+        console.warn("⚠️ AnchorBridge instance, wallet signer, or connection not available.");
         return;
     }
 
@@ -54,28 +54,30 @@ export default function Home() {
         const seed = "my_seed"; 
         const totalSize = 1024;
         const totalChunks = 10;
-
-        // ✅ Call Rust WASM function
         const txBase64 = await anchorBridge.initialize_storage_account(seed, totalSize, totalChunks);
 
-        // 🔍 Debug: Log what WASM is returning
         console.log("🔍 Raw WASM output:", txBase64);
 
         if (!txBase64 || typeof txBase64 !== "string") {
             throw new Error("Received invalid transaction data from WASM.");
         }
+        const txMessageBytes = Buffer.from(txBase64, "base64");
+        let reconstructedTx = Transaction.populate(Message.from(txMessageBytes));
+        const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
+        console.log("🔍 Latest blockhash:", blockhash);
+        reconstructedTx.recentBlockhash = blockhash;
+        reconstructedTx.lastValidBlockHeight = lastValidBlockHeight;
+        const signedTransaction = await wallet.signTransaction(reconstructedTx);
+        console.log("✅ Signed Transaction:", signedTransaction);
 
-        // ✅ Decode base64 transaction
-        const txBytes = Buffer.from(txBase64, "base64");
+        const txId = await connection.sendRawTransaction(signedTransaction.serialize(), {
+            skipPreflight: false,
+            preflightCommitment: "confirmed",
+        });
 
-        // ✅ Deserialize transaction using Solana SDK
-        const tx = Transaction.from(txBytes);
+        console.log("✅ Transaction ID:", txId);
+        setInitResponse(`Success: ${txId}`);
 
-        // ✅ Sign transaction using the wallet
-        const signedTx = await wallet.signTransaction(tx);
-
-        console.log("✅ Signed Transaction:", signedTx);
-        setInitResponse(`Success: ${signedTx.signature}`);
     } catch (error) {
         console.error("❌ Error initializing storage account:", error);
         setInitResponse("Error initializing storage account.");
