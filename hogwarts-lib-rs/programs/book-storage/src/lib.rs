@@ -16,8 +16,8 @@ pub mod book_storage {
         msg!("📌 Total Chunks: {}", total_chunks);
         let storage_account = &mut ctx.accounts.storage_account;
         let total_storage_size = total_size * total_chunks; 
-        let expected_pda = Pubkey::find_program_address(&[seed.as_bytes()], ctx.program_id).0;
-        require_keys_eq!(storage_account.key(), expected_pda, ErrorCode::InvalidStorageAccount);
+        // let expected_pda = Pubkey::find_program_address(&[seed.as_bytes()], ctx.program_id).0;
+        // require_keys_eq!(storage_account.key(), expected_pda, ErrorCode::InvalidStorageAccount);
     
         storage_account.total_size = total_storage_size;
         storage_account.total_chunks = total_chunks;
