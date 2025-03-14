@@ -73,13 +73,13 @@ pub struct StorageAccount {
 }
 
 #[derive(Accounts)]
-#[instruction(total_size: u32, total_chunks: u32)]
+#[instruction(seed: String, total_size: u32, total_chunks: u32)]
 pub struct Initialize<'info> {
     #[account(
         init,
         payer = user,
         space = 8 + 4 + 4 + (total_size as usize * total_chunks as usize),
-        seeds = [b"book_storage"], // PDA Seed
+        seeds = [seed.as_bytes()],
         bump
     )]
     pub storage_account: Account<'info, StorageAccount>,
