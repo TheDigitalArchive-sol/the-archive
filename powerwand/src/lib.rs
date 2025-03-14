@@ -43,15 +43,19 @@ impl AnchorBridge {
         
         future_to_promise(async move {
             let (storage_account_pubkey, _bump) = Pubkey::find_program_address(&[seed.as_bytes()], &program_id);
-
-            let instr = Instruction::new_with_borsh(
-                program_id,
-                &InitializeInstr { total_size, total_chunks },
-                vec![
-                    AccountMeta::new(storage_account_pubkey, false),
-                    AccountMeta::new(payer, true),
-                ],
-            );
+            let mut instr_data = vec![];
+            instr_data.extend_from_slice(&solana_sdk::hash::hash(b"global:initialize").to_bytes()[..8]);
+            instr_data.extend_from_slice(&total_size.to_le_bytes());
+            instr_data.extend_from_slice(&total_chunks.to_le_bytes());
+    
+        let instr = Instruction {
+            program_id,
+            accounts: vec![
+                AccountMeta::new(storage_account_pubkey, false),
+                AccountMeta::new(payer, true),
+            ],
+            data: instr_data,
+        };
 
             let message = Message::new(&[instr], Some(&payer));
             let tx: Transaction = Transaction::new_unsigned(message);
