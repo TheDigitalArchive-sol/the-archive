@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_lang::system_program::{self, Transfer};
 
-declare_id!("Fk3qBVpk9KCYunBMcdaCcUm3wA9zj7rgBtdu7mBU6CHc");
+declare_id!("8Besjdk7LVmnJfuCKAaM2sfAubbggvhgT597XFH8AXbj");
 
 const MAX_REALLOC_STEP: usize = 10_240;
 
