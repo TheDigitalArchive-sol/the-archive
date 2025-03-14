@@ -18,6 +18,10 @@ export default function Home() {
     const [loading, setLoading] = useState(false);
     const [program, setProgram] = useState<Program<Idl> | null>(null);
 
+    const [pdaAddress, setPdaAddress] = useState<string | null>(null);
+    const [txId, setTxId] = useState<string | null>(null);
+    const [availableSpace, setAvailableSpace] = useState<number | null>(null);
+    
     const connection = new Connection("http://127.0.0.1:8899");
     const PROGRAM_ID = "8Besjdk7LVmnJfuCKAaM2sfAubbggvhgT597XFH8AXbj";
 
@@ -51,32 +55,49 @@ export default function Home() {
     }
 
     try {
-        const seed = "book_storage"; 
         const totalSize = 900;
         const totalChunks = 10;
-        const txBase64 = await anchorBridge.initialize_storage_account(seed, totalSize, totalChunks);
 
+        const bookId = Date.now().toString();
+        if (!wallet.publicKey) {
+          console.error("❌ Wallet is not connected!");
+          return;
+      }
+      // const seed = `book_${bookId}`;
+      const seed = `book_storage`;
+
+        const [pda] = await PublicKey.findProgramAddress(
+            [Buffer.from(seed)],
+            new PublicKey(PROGRAM_ID)
+        );
+
+        console.log("📌 Unique PDA Address for New Book:", pda.toBase58());
+        setPdaAddress(pda.toBase58());
+
+        // ✅ Call Rust WASM function to get the transaction
+        const txBase64 = await anchorBridge.initialize_storage_account(seed, totalSize, totalChunks);
         console.log("🔍 Raw WASM output:", txBase64);
 
         if (!txBase64 || typeof txBase64 !== "string") {
             throw new Error("Received invalid transaction data from WASM.");
         }
+        
         const txMessageBytes = Buffer.from(txBase64, "base64");
         let reconstructedTx = Transaction.populate(Message.from(txMessageBytes));
         const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
-        console.log("🔍 Latest blockhash:", blockhash);
         reconstructedTx.recentBlockhash = blockhash;
         reconstructedTx.lastValidBlockHeight = lastValidBlockHeight;
         const signedTransaction = await wallet.signTransaction(reconstructedTx);
         console.log("✅ Signed Transaction:", signedTransaction);
 
-        const txId = await connection.sendRawTransaction(signedTransaction.serialize(), {
+        const transactionId = await connection.sendRawTransaction(signedTransaction.serialize(), {
             skipPreflight: false,
             preflightCommitment: "confirmed",
         });
 
-        console.log("✅ Transaction ID:", txId);
-        setInitResponse(`Success: ${txId}`);
+        console.log("✅ Transaction ID:", transactionId);
+        setTxId(transactionId);
+        setInitResponse(`Success: ${transactionId}`);
 
     } catch (error) {
         console.error("❌ Error initializing storage account:", error);
@@ -149,6 +170,14 @@ export default function Home() {
       >
         🚀 Initialize Storage Account
         </button>
+      {/* Display PDA Info After Transaction */}
+
+      {pdaAddress && (
+        <div className="mt-6 text-lg font-medium bg-gray-800 px-6 py-3 rounded-lg shadow-md">
+          <p>📌 <b>PDA Address:</b> {pdaAddress}</p>
+          {txId && <p>🔗 <b>Transaction ID:</b> <a href={`https://explorer.solana.com/tx/${txId}?cluster=devnet`} target="_blank" className="text-blue-400 underline">{txId.slice(0, 6)}...{txId.slice(-6)}</a></p>}
+        </div>
+      )}
           </div>
   );
 }
