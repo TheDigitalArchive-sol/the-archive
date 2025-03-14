@@ -9,120 +9,114 @@ import { Program, Idl } from "@project-serum/anchor";
 import { Transaction, Message } from "@solana/web3.js";
 
 export default function Home() {
-    const [isClient, setIsClient] = useState(false);
-    const [wasm, setWasm] = useState<any | null>(null);
-    const [anchorBridge, setAnchorBridge] = useState<any | null>(null);
-    const [initResponse, setInitResponse] = useState<string | null>(null);
-    const wallet = useWallet();
-    const [balance, setBalance] = useState<number | null>(null);
-    const [loading, setLoading] = useState(false);
-    const [program, setProgram] = useState<Program<Idl> | null>(null);
+  const [isClient, setIsClient] = useState(false);
+  const [wasm, setWasm] = useState<any | null>(null);
+  const [anchorBridge, setAnchorBridge] = useState<any | null>(null);
+  const [initResponse, setInitResponse] = useState<string | null>(null);
+  const wallet = useWallet();
+  const [balance, setBalance] = useState<number | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [program, setProgram] = useState<Program<Idl> | null>(null);
 
-    const [pdaAddress, setPdaAddress] = useState<string | null>(null);
-    const [txId, setTxId] = useState<string | null>(null);
-    const [availableSpace, setAvailableSpace] = useState<number | null>(null);
-    
-    const connection = new Connection("http://127.0.0.1:8899");
-    const PROGRAM_ID = "8Besjdk7LVmnJfuCKAaM2sfAubbggvhgT597XFH8AXbj";
+  const [pdaAddress, setPdaAddress] = useState<string | null>(null);
+  const [txId, setTxId] = useState<string | null>(null);
+  const [availableSpace, setAvailableSpace] = useState<number | null>(null);
 
-    useEffect(() => {
-      if (!PROGRAM_ID) {
-          console.error("❌ Missing PROGRAM_ID!");
-          return;
+  const connection = new Connection("http://127.0.0.1:8899");
+  const PROGRAM_ID = "8Besjdk7LVmnJfuCKAaM2sfAubbggvhgT597XFH8AXbj";
+
+  useEffect(() => {
+    if (!PROGRAM_ID) {
+      console.error("❌ Missing PROGRAM_ID!");
+      return;
+    }
+
+    import("/home/rzanei/dev/the-archive/powerwand/pkg/powerwand.js").then(async (module) => {
+      await module.default();
+      setWasm(module);
+
+      if (wallet.connected && wallet.publicKey) {
+        try {
+          console.log("✅ Connected Wallet:", wallet.publicKey.toBase58());
+
+          const bridge = new module.AnchorBridge(wallet.publicKey.toBase58(), PROGRAM_ID);
+          setAnchorBridge(bridge);
+        } catch (error) {
+          console.error("❌ Error using wallet as payer:", error);
+        }
       }
-  
-      import("/home/rzanei/dev/the-archive/powerwand/pkg/powerwand.js").then(async (module) => {
-          await module.default();
-          setWasm(module);
-  
-          if (wallet.connected && wallet.publicKey) {
-              try {
-                  console.log("✅ Connected Wallet:", wallet.publicKey.toBase58());
-  
-                  const bridge = new module.AnchorBridge(wallet.publicKey.toBase58(), PROGRAM_ID);
-                  setAnchorBridge(bridge);
-              } catch (error) {
-                  console.error("❌ Error using wallet as payer:", error);
-              }
-          }
-      }).catch((error) => console.error("❌ Error loading WASM module:", error));
+    }).catch((error) => console.error("❌ Error loading WASM module:", error));
   }, [wallet]);
 
   const initializeStorageAccount = async () => {
     if (!anchorBridge || !wallet.signTransaction || !connection) {
-        console.warn("⚠️ AnchorBridge instance, wallet signer, or connection not available.");
-        return;
+      console.warn("⚠️ AnchorBridge instance, wallet signer, or connection not available.");
+      return;
     }
 
     try {
-        const totalSize = 900;
-        const totalChunks = 10;
+      const totalSize = 900;
+      const totalChunks = 10;
 
-        const bookId = Date.now().toString();
-        if (!wallet.publicKey) {
-          console.error("❌ Wallet is not connected!");
-          return;
+      if (!wallet.publicKey) {
+        console.error("❌ Wallet is not connected!");
+        return;
       }
-      // const seed = `book_${bookId}`;
-      const seed = `book_storage`;
+      const seed = `book_${Date.now().toString()}`;
 
-        const [pda] = await PublicKey.findProgramAddress(
-            [Buffer.from(seed)],
-            new PublicKey(PROGRAM_ID)
-        );
+      const [pda] = await PublicKey.findProgramAddress(
+        [Buffer.from(seed)],
+        new PublicKey(PROGRAM_ID)
+      );
 
-        console.log("📌 Unique PDA Address for New Book:", pda.toBase58());
-        setPdaAddress(pda.toBase58());
+      console.log("📌 Unique PDA Address for New Book:", pda.toBase58());
+      setPdaAddress(pda.toBase58());
 
-        // ✅ Call Rust WASM function to get the transaction
-        const txBase64 = await anchorBridge.initialize_storage_account(seed, totalSize, totalChunks);
-        console.log("🔍 Raw WASM output:", txBase64);
+      const txBase64 = await anchorBridge.initialize_storage_account(seed, totalSize, totalChunks);
+      console.log("🔍 Raw WASM output:", txBase64);
 
-        if (!txBase64 || typeof txBase64 !== "string") {
-            throw new Error("Received invalid transaction data from WASM.");
-        }
-        
-        const txMessageBytes = Buffer.from(txBase64, "base64");
-        let reconstructedTx = Transaction.populate(Message.from(txMessageBytes));
-        const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
-        reconstructedTx.recentBlockhash = blockhash;
-        reconstructedTx.lastValidBlockHeight = lastValidBlockHeight;
-        const signedTransaction = await wallet.signTransaction(reconstructedTx);
-        console.log("✅ Signed Transaction:", signedTransaction);
+      if (!txBase64 || typeof txBase64 !== "string") {
+        throw new Error("Received invalid transaction data from WASM.");
+      }
 
-        const transactionId = await connection.sendRawTransaction(signedTransaction.serialize(), {
-            skipPreflight: false,
-            preflightCommitment: "confirmed",
-        });
+      const txMessageBytes = Buffer.from(txBase64, "base64");
+      let reconstructedTx = Transaction.populate(Message.from(txMessageBytes));
+      const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
+      reconstructedTx.recentBlockhash = blockhash;
+      reconstructedTx.lastValidBlockHeight = lastValidBlockHeight;
+      const signedTransaction = await wallet.signTransaction(reconstructedTx);
+      console.log("✅ Signed Transaction:", signedTransaction);
 
-        console.log("✅ Transaction ID:", transactionId);
-        setTxId(transactionId);
-        setInitResponse(`Success: ${transactionId}`);
+      const transactionId = await connection.sendRawTransaction(signedTransaction.serialize(), { skipPreflight: false, preflightCommitment: "confirmed", });
+      console.log("✅ Transaction ID:", transactionId);
+
+      setTxId(transactionId);
+      setInitResponse(`Success: ${transactionId}`);
 
     } catch (error) {
-        console.error("❌ Error initializing storage account:", error);
-        setInitResponse("Error initializing storage account.");
+      console.error("❌ Error initializing storage account:", error);
+      setInitResponse("Error initializing storage account.");
     }
-};
+  };
 
-    const fetchBalance = async () => {
-      if (!wallet.publicKey) return;
-      setLoading(true);
-      try {
-        const balance = await connection.getBalance(new PublicKey(wallet.publicKey));
-        setBalance(balance / 1e9);
-      } catch (error) {
-        console.error("Error fetching balance:", error);
-      }
-      setLoading(false);
-    };
+  const fetchBalance = async () => {
+    if (!wallet.publicKey) return;
+    setLoading(true);
+    try {
+      const balance = await connection.getBalance(new PublicKey(wallet.publicKey));
+      setBalance(balance / 1e9);
+    } catch (error) {
+      console.error("Error fetching balance:", error);
+    }
+    setLoading(false);
+  };
 
-    const provider = useProvider();
-    useEffect(() => {
-      if (wallet && wallet.publicKey && provider) {
-          setProgram(program);
-          fetchBalance();
-      }
+  const provider = useProvider();
+  useEffect(() => {
+    if (wallet && wallet.publicKey && provider) {
+      setProgram(program);
+      fetchBalance();
+    }
   }, [wallet, provider]);
 
   return (
@@ -133,10 +127,10 @@ export default function Home() {
 
       {/* Wallet Connect Button */}
       <div>
-      {isClient && (
-        <WalletMultiButton className="!bg-green-600 hover:!bg-green-700 text-white text-lg font-semibold px-6 py-3 rounded-lg shadow-lg transition-all" />
-      )}
-    </div>
+        {isClient && (
+          <WalletMultiButton className="!bg-green-600 hover:!bg-green-700 text-white text-lg font-semibold px-6 py-3 rounded-lg shadow-lg transition-all" />
+        )}
+      </div>
 
       {/* Display Wallet Address */}
       {wallet.publicKey && (
@@ -165,19 +159,19 @@ export default function Home() {
 
       {/* Button to initialize storage account */}
       <button
-          onClick={initializeStorageAccount}
-          className="bg-yellow-500 hover:bg-yellow-600 text-black font-bold px-6 py-3 rounded-lg shadow-lg transition-all"
+        onClick={initializeStorageAccount}
+        className="bg-yellow-500 hover:bg-yellow-600 text-black font-bold px-6 py-3 rounded-lg shadow-lg transition-all"
       >
         🚀 Initialize Storage Account
-        </button>
+      </button>
       {/* Display PDA Info After Transaction */}
 
       {pdaAddress && (
         <div className="mt-6 text-lg font-medium bg-gray-800 px-6 py-3 rounded-lg shadow-md">
           <p>📌 <b>PDA Address:</b> {pdaAddress}</p>
-          {txId && <p>🔗 <b>Transaction ID:</b> <a href={`https://explorer.solana.com/tx/${txId}?cluster=devnet`} target="_blank" className="text-blue-400 underline">{txId.slice(0, 6)}...{txId.slice(-6)}</a></p>}
+          {txId && <p>🔗 <b>Transaction ID:</b> <a target="_blank" className="text-blue-400 underline">{txId}</a></p>}
         </div>
       )}
-          </div>
+    </div>
   );
 }
