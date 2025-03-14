@@ -96,6 +96,7 @@ impl AnchorBridge {
                     accounts: vec![
                         AccountMeta::new(storage_account_pubkey, false),
                         AccountMeta::new(payer, true),
+                        AccountMeta::new_readonly(solana_sdk::system_program::ID, false),
                     ],
                     data: instr_data,
                 };
