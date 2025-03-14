@@ -51,8 +51,8 @@ export default function Home() {
     }
 
     try {
-        const seed = "my_seed"; 
-        const totalSize = 1024;
+        const seed = "book_storage"; 
+        const totalSize = 900;
         const totalChunks = 10;
         const txBase64 = await anchorBridge.initialize_storage_account(seed, totalSize, totalChunks);
 
