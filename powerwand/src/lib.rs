@@ -5,6 +5,7 @@ use solana_sdk::transaction::Transaction;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::js_sys::Promise;
 use wasm_bindgen_futures::{future_to_promise, wasm_bindgen};
+use serde_wasm_bindgen::to_value;
 use borsh::{BorshDeserialize, BorshSerialize};
 
 #[derive(BorshSerialize, BorshDeserialize)]
@@ -72,38 +73,41 @@ impl AnchorBridge {
         })
     }
 
-    pub fn store_data_in_chunks(&self, storage_account_pubkey: String, data: Vec<u8>) -> Promise {
-        let storage_account_pubkey = storage_account_pubkey
-            .parse::<Pubkey>()
-            .expect("Invalid pubkey");
+    #[wasm_bindgen]
+    pub fn store_data_in_chunks(&self, storage_account_pubkey: String, data: Vec<u8>, chunk_size: usize) -> Promise {
+        let storage_account_pubkey = storage_account_pubkey.parse::<Pubkey>().expect("Invalid pubkey");
         let payer = self.payer_pubkey.clone();
         let program_id: Pubkey = self.sb_program_id;
-
+    
         future_to_promise(async move {
-            const CHUNK_SIZE: usize = 900;
-            let mut transactions = Vec::new();
-
-            for (_i, chunk) in data.chunks(CHUNK_SIZE).enumerate() {
+            let mut transactions_base64 = Vec::new();
+    
+            for chunk in data.chunks(chunk_size) {
                 let chunk_vec = chunk.to_vec();
-
-
-
-                let instr = Instruction::new_with_borsh(
+    
+                let mut instr_data = vec![];
+                let discriminator = solana_sdk::hash::hash(b"global:store_data").to_bytes();
+                instr_data.extend_from_slice(&discriminator[..8]);
+                instr_data.extend_from_slice(&(chunk_vec.len() as u32).to_le_bytes());
+                instr_data.extend_from_slice(&chunk_vec);
+    
+                let instr = Instruction {
                     program_id,
-                    &StoreData { value: chunk_vec },
-                    vec![
-                        AccountMeta::new(storage_account_pubkey, true),
-                        AccountMeta::new(payer, false),
+                    accounts: vec![
+                        AccountMeta::new(storage_account_pubkey, false),
+                        AccountMeta::new(payer, true),
                     ],
-               );
-
-                let message= Message::new(&[instr], Some(&payer));
+                    data: instr_data,
+                };
+    
+                let message = Message::new(&[instr], Some(&payer));
                 let tx = Transaction::new_unsigned(message);
-                transactions.push(tx);
+    
+                let tx_bytes = tx.message_data(); 
+                let tx_base64 = base64::encode(tx_bytes);
+                transactions_base64.push(tx_base64);
             }
-
-            // WASM does not support direct Solana RPC, so transactions should be sent via JS.
-            Ok(JsValue::from_str("✅ Transactions prepared, sign and send via JS"))
-        })
+    
+            Ok(to_value(&transactions_base64).map_err(|e| JsValue::from_str(&format!("Serialization error: {}", e)))?)})
     }
 }
