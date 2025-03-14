@@ -6,6 +6,7 @@ import { useWallet } from "@solana/wallet-adapter-react";
 import { Connection, PublicKey } from "@solana/web3.js";
 import { useProvider } from "./utils";
 import { Program, Idl } from "@project-serum/anchor";
+import { Transaction } from "@solana/web3.js";
 
 export default function Home() {
     const [isClient, setIsClient] = useState(false);
@@ -50,16 +51,31 @@ export default function Home() {
     }
 
     try {
-        const seed = "my_seed";
+        const seed = "my_seed"; 
         const totalSize = 1024;
         const totalChunks = 10;
 
-        let tx = await anchorBridge.initialize_storage_account(seed, totalSize, totalChunks);
+        // ✅ Call Rust WASM function
+        const txBase64 = await anchorBridge.initialize_storage_account(seed, totalSize, totalChunks);
 
-        tx = await wallet.signTransaction(tx);
+        // 🔍 Debug: Log what WASM is returning
+        console.log("🔍 Raw WASM output:", txBase64);
 
-        console.log("✅ Storage Account Initialized & Signed Transaction:", tx);
-        setInitResponse(`Success: ${tx.signature}`);
+        if (!txBase64 || typeof txBase64 !== "string") {
+            throw new Error("Received invalid transaction data from WASM.");
+        }
+
+        // ✅ Decode base64 transaction
+        const txBytes = Buffer.from(txBase64, "base64");
+
+        // ✅ Deserialize transaction using Solana SDK
+        const tx = Transaction.from(txBytes);
+
+        // ✅ Sign transaction using the wallet
+        const signedTx = await wallet.signTransaction(tx);
+
+        console.log("✅ Signed Transaction:", signedTx);
+        setInitResponse(`Success: ${signedTx.signature}`);
     } catch (error) {
         console.error("❌ Error initializing storage account:", error);
         setInitResponse("Error initializing storage account.");
