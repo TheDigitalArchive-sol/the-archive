@@ -21,7 +21,7 @@ export default function Home() {
   const [pdaAddress, setPdaAddress] = useState<string | null>(null);
   const [txId, setTxId] = useState<string | null>(null);
   const [bookContent, setBookContent] = useState("");
-  // const [retrievedContent, setRetrievedContent] = useState<string | null>(null);
+  const [retrievedContent, setRetrievedContent] = useState<string | null>(null);
 
   const connection = new Connection("http://127.0.0.1:8899");
   const PROGRAM_ID = "8Besjdk7LVmnJfuCKAaM2sfAubbggvhgT597XFH8AXbj";
@@ -99,36 +99,6 @@ export default function Home() {
       setInitResponse("Error initializing storage account.");
     }
   };
-  
-//   const retrieveStoredData = async () => {
-//     if (!connection || !pdaAddress) {
-//         console.warn("⚠️ Connection or Storage Account PDA not available.");
-//         return;
-//     }
-
-//     try {
-//         console.log("📥 Retrieving stored book data...");
-
-//         // ✅ Fetch account data
-//         const accountInfo = await connection.getAccountInfo(new PublicKey(pdaAddress));
-
-//         if (!accountInfo || !accountInfo.data) {
-//             console.error("❌ No data found in storage account!");
-//             return;
-//         }
-
-//         console.log("📏 Raw Data Length:", accountInfo.data.length);
-
-//         const storedBytes = accountInfo.data.slice(8);
-//         const decoder = new TextDecoder();
-//         const storedText = decoder.decode(storedBytes);
-
-//         console.log("📖 Stored Book Content:", storedText);
-//         setRetrievedContent(storedText);
-//     } catch (error) {
-//         console.error("❌ Error retrieving stored data:", error);
-//     }
-// };
 
 const storeDataInChunks = async () => {
   if (!anchorBridge || !wallet.signAllTransactions || !connection || !pdaAddress) {
@@ -204,7 +174,30 @@ const storeDataInChunks = async () => {
       fetchBalance();
     }
   }, [wallet, provider]);
+  
+  const retrieveStoredData = async () => {
+    if (!connection || !pdaAddress) {
+      console.warn("⚠️ Connection or Storage Account PDA not available.");
+      return;
+    }
 
+    try {
+      console.log("📥 Retrieving stored book data...");
+      const accountInfo = await connection.getAccountInfo(new PublicKey(pdaAddress));
+      if (!accountInfo || !accountInfo.data) {
+        console.error("❌ No data found in storage account!");
+        return;
+      }
+      console.log("📏 Raw Data Length:", accountInfo.data.length);
+      const storedBytes = accountInfo.data.slice(8);
+      const decoder = new TextDecoder();
+      const storedText = decoder.decode(storedBytes);
+      console.log("📖 Stored Book Content:", storedText);
+      setRetrievedContent(storedText);
+    } catch (error) {
+      console.error("❌ Error retrieving stored data:", error);
+    }
+  };
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-r from-purple-900 to-black text-white p-8">
       <h1 className="text-5xl font-extrabold mb-6 text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-blue-500">
@@ -275,6 +268,30 @@ const storeDataInChunks = async () => {
           📩 Submit Book Content
         </button>
       </div>
+
+      <div className="mt-6 w-full">
+          <input
+            type="text"
+            className="w-full bg-gray-800 text-white p-4 rounded-lg shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="Enter PDA Address"
+            value={pdaAddress || ""}
+            onChange={(e) => setPdaAddress(e.target.value)}
+          />
+          <button
+            onClick={retrieveStoredData}
+            className="mt-4 bg-blue-500 hover:bg-blue-600 text-white font-bold px-6 py-3 rounded-lg shadow-lg transition-all w-full"
+          >
+            📥 Retrieve Stored Data
+          </button>
+        </div>
+
+      {retrievedContent && (
+        <div className="w-1/2 ml-8 bg-gray-800 p-6 rounded-lg shadow-lg">
+          <h2 className="text-xl font-semibold mb-4">📖 Retrieved Content</h2>
+          <p className="whitespace-pre-wrap text-gray-300">{retrievedContent}</p>
+        </div>
+      )}
+
     </div>
   );
 }
