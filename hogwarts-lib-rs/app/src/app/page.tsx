@@ -21,6 +21,7 @@ export default function Home() {
   const [pdaAddress, setPdaAddress] = useState<string | null>(null);
   const [txId, setTxId] = useState<string | null>(null);
   const [bookContent, setBookContent] = useState("");
+  // const [retrievedContent, setRetrievedContent] = useState<string | null>(null);
 
   const connection = new Connection("http://127.0.0.1:8899");
   const PROGRAM_ID = "8Besjdk7LVmnJfuCKAaM2sfAubbggvhgT597XFH8AXbj";
@@ -99,56 +100,89 @@ export default function Home() {
     }
   };
   
-  const storeDataInChunks = async () => {
-    if (!anchorBridge || !wallet.signTransaction || !connection || !pdaAddress) {
-        console.warn("⚠️ Storage account not initialized or wallet unavailable.");
-        return;
-    }
+//   const retrieveStoredData = async () => {
+//     if (!connection || !pdaAddress) {
+//         console.warn("⚠️ Connection or Storage Account PDA not available.");
+//         return;
+//     }
 
-    try {
-        if (!bookContent.trim()) {
-            console.warn("⚠️ No content to store.");
-            return;
-        }
+//     try {
+//         console.log("📥 Retrieving stored book data...");
 
-        const encoder = new TextEncoder();
-        const bookData = encoder.encode(bookContent);
+//         // ✅ Fetch account data
+//         const accountInfo = await connection.getAccountInfo(new PublicKey(pdaAddress));
 
-        console.log(`📖 Preparing to store ${bookData.length} bytes of data.`);
-        const txsBase64 = await anchorBridge.store_data_in_chunks(pdaAddress, bookData, 900);
-        console.log("🔍 Raw WASM output:", txsBase64);
+//         if (!accountInfo || !accountInfo.data) {
+//             console.error("❌ No data found in storage account!");
+//             return;
+//         }
 
-        if (!Array.isArray(txsBase64) || txsBase64.length === 0) {
-            throw new Error("Received invalid transaction data from WASM.");
-        }
+//         console.log("📏 Raw Data Length:", accountInfo.data.length);
 
-        let signedTransactions = [];
+//         const storedBytes = accountInfo.data.slice(8);
+//         const decoder = new TextDecoder();
+//         const storedText = decoder.decode(storedBytes);
 
-        for (const txBase64 of txsBase64) {
-            const txMessageBytes = Buffer.from(txBase64, "base64");
-            let reconstructedTx = Transaction.populate(Message.from(txMessageBytes));
+//         console.log("📖 Stored Book Content:", storedText);
+//         setRetrievedContent(storedText);
+//     } catch (error) {
+//         console.error("❌ Error retrieving stored data:", error);
+//     }
+// };
 
-            const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
-            reconstructedTx.recentBlockhash = blockhash;
-            reconstructedTx.lastValidBlockHeight = lastValidBlockHeight;
+const storeDataInChunks = async () => {
+  if (!anchorBridge || !wallet.signAllTransactions || !connection || !pdaAddress) {
+      console.warn("⚠️ Storage account not initialized or wallet unavailable.");
+      return;
+  }
 
-            const signedTransaction = await wallet.signTransaction(reconstructedTx);
-            signedTransactions.push(signedTransaction);
-        }
+  try {
+      if (!bookContent.trim()) {
+          console.warn("⚠️ No content to store.");
+          return;
+      }
 
-        for (const signedTx of signedTransactions) {
-            const txId = await connection.sendRawTransaction(signedTx.serialize(), {
-                skipPreflight: false,
-                preflightCommitment: "confirmed",
-            });
-            console.log("✅ Sent transaction:", txId);
-        }
+      const encoder = new TextEncoder();
+      const bookData = encoder.encode(bookContent);
 
-        console.log("🎉 All book content stored successfully!");
+      console.log(`📖 Preparing to store ${bookData.length} bytes of data.`);
+      const txsBase64 = await anchorBridge.store_data_in_chunks(pdaAddress, bookData, 900);
+      console.log("🔍 Raw WASM output:", txsBase64);
 
-    } catch (error) {
-        console.error("❌ Error storing data:", error);
-    }
+      if (!Array.isArray(txsBase64) || txsBase64.length === 0) {
+          throw new Error("Received invalid transaction data from WASM.");
+      }
+
+      let transactions = [];
+
+      for (const txBase64 of txsBase64) {
+          const txMessageBytes = Buffer.from(txBase64, "base64");
+          let reconstructedTx = Transaction.populate(Message.from(txMessageBytes));
+
+          const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
+          reconstructedTx.recentBlockhash = blockhash;
+          reconstructedTx.lastValidBlockHeight = lastValidBlockHeight;
+
+          transactions.push(reconstructedTx);
+      }
+
+      console.log("🔏 Signing all transactions...");
+      const signedTransactions = await wallet.signAllTransactions(transactions);
+      console.log("✅ All transactions signed!");
+
+      for (const signedTx of signedTransactions) {
+          const txId = await connection.sendRawTransaction(signedTx.serialize(), {
+              skipPreflight: false,
+              preflightCommitment: "confirmed",
+          });
+          console.log("✅ Sent transaction:", txId);
+      }
+
+      console.log("🎉 All book content stored successfully!");
+
+  } catch (error) {
+      console.error("❌ Error storing data:", error);
+  }
 };
 
   const fetchBalance = async () => {
@@ -174,7 +208,7 @@ export default function Home() {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-r from-purple-900 to-black text-white p-8">
       <h1 className="text-5xl font-extrabold mb-6 text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-blue-500">
-        Solana dApp
+        The Digital Archive
       </h1>
 
       {/* Wallet Connect Button */}
