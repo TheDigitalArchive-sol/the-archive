@@ -111,4 +111,19 @@ impl AnchorBridge {
     
             Ok(to_value(&transactions_base64).map_err(|e| JsValue::from_str(&format!("Serialization error: {}", e)))?)})
     }
+
+
+    #[wasm_bindgen]
+    pub fn light_msg_encryption(&self, key: &str, json_file_path: &str) -> Promise {
+        let data = light_writer_rs::light_msg_encryption(key, json_file_path).unwrap();
+        future_to_promise(async move {
+        Ok(to_value(&data).map_err(|e| JsValue::from_str(&format!("Serialization error: {}", e)))?)})
+    }
+
+    #[wasm_bindgen]
+    pub fn light_msg_decryption(&self, key: &str, cbd: Vec<u8>) -> Promise {
+        let data = light_writer_rs::light_msg_decryption(key, cbd).unwrap();
+        future_to_promise(async move {
+        Ok(to_value(&data).map_err(|e| JsValue::from_str(&format!("Serialization error: {}", e)))?)})
+    }
 }
