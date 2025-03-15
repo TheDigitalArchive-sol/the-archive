@@ -98,7 +98,7 @@ export default function Home() {
       setInitResponse("Error initializing storage account.");
     }
   };
-
+  
   const storeDataInChunks = async () => {
     if (!anchorBridge || !wallet.signTransaction || !connection || !pdaAddress) {
         console.warn("⚠️ Storage account not initialized or wallet unavailable.");
@@ -149,7 +149,7 @@ export default function Home() {
     } catch (error) {
         console.error("❌ Error storing data:", error);
     }
-};  
+};
 
   const fetchBalance = async () => {
     if (!wallet.publicKey) return;
