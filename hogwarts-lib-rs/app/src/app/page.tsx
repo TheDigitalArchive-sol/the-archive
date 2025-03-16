@@ -22,6 +22,7 @@ export default function Home() {
   const [txId, setTxId] = useState<string | null>(null);
   const [bookContent, setBookContent] = useState("");
   const [retrievedContent, setRetrievedContent] = useState<string | null>(null);
+  const [uploadedJson, setUploadedJson] = useState<any | null>(null);
 
   const connection = new Connection("http://127.0.0.1:8899");
   const PROGRAM_ID = "8Besjdk7LVmnJfuCKAaM2sfAubbggvhgT597XFH8AXbj";
@@ -100,41 +101,50 @@ export default function Home() {
     }
   };
 
-const storeDataInChunks = async () => {
-  if (!anchorBridge || !wallet.signAllTransactions || !connection || !pdaAddress) {
+  const storeDataInChunks = async (jsonData: any) => {
+    if (!anchorBridge || !wallet.signAllTransactions || !connection || !pdaAddress) {
       console.warn("⚠️ Storage account not initialized or wallet unavailable.");
       return;
-  }
+    }
 
-  try {
-      if (!bookContent.trim()) {
-          console.warn("⚠️ No content to store.");
-          return;
+    try {
+      if (!jsonData) {
+        console.warn("⚠️ No content to store.");
+        return;
       }
 
-      const encoder = new TextEncoder();
-      const bookData = encoder.encode(bookContent);
-      const encrypted_data = await anchorBridge.light_msg_encryption("pdaAddress", bookData, 900);
+      console.log("📖 Preparing JSON data for encryption...");
 
-      console.log(`📖 Preparing to store ${bookData.length} bytes of data.`);
-      const txsBase64 = await anchorBridge.store_data_in_chunks(pdaAddress, bookData, 900);
+      const jsonString = JSON.stringify(jsonData);
+
+      let encrypted_data;
+      try {
+        console.log("🔍 Encrypting JSON data...");
+        encrypted_data = await anchorBridge.light_msg_encryption(pdaAddress, jsonString);
+        console.log("✅ Encryption successful.");
+      } catch (error) {
+        console.error("❌ WASM encryption failed:", error);
+        return;
+      }
+
+      console.log(`📡 Storing encrypted data chunks...`);
+      const txsBase64 = await anchorBridge.store_data_in_chunks(pdaAddress, encrypted_data, 900);
       console.log("🔍 Raw WASM output:", txsBase64);
 
       if (!Array.isArray(txsBase64) || txsBase64.length === 0) {
-          throw new Error("Received invalid transaction data from WASM.");
+        throw new Error("Received invalid transaction data from WASM.");
       }
 
       let transactions = [];
-
       for (const txBase64 of txsBase64) {
-          const txMessageBytes = Buffer.from(txBase64, "base64");
-          let reconstructedTx = Transaction.populate(Message.from(txMessageBytes));
+        const txMessageBytes = Buffer.from(txBase64, "base64");
+        let reconstructedTx = Transaction.populate(Message.from(txMessageBytes));
 
-          const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
-          reconstructedTx.recentBlockhash = blockhash;
-          reconstructedTx.lastValidBlockHeight = lastValidBlockHeight;
+        const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
+        reconstructedTx.recentBlockhash = blockhash;
+        reconstructedTx.lastValidBlockHeight = lastValidBlockHeight;
 
-          transactions.push(reconstructedTx);
+        transactions.push(reconstructedTx);
       }
 
       console.log("🔏 Signing all transactions...");
@@ -142,19 +152,45 @@ const storeDataInChunks = async () => {
       console.log("✅ All transactions signed!");
 
       for (const signedTx of signedTransactions) {
-          const txId = await connection.sendRawTransaction(signedTx.serialize(), {
-              skipPreflight: false,
-              preflightCommitment: "confirmed",
-          });
-          console.log("✅ Sent transaction:", txId);
+        const txId = await connection.sendRawTransaction(signedTx.serialize(), {
+          skipPreflight: false,
+          preflightCommitment: "confirmed",
+        });
+        console.log("✅ Sent transaction:", txId);
       }
 
       console.log("🎉 All book content stored successfully!");
 
-  } catch (error) {
+    } catch (error) {
       console.error("❌ Error storing data:", error);
-  }
-};
+    }
+  };
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      console.warn("⚠️ No file selected.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.readAsText(file);
+
+    reader.onload = async (e) => {
+      try {
+        const fileContent = e.target?.result as string;
+
+        const jsonData = JSON.parse(fileContent);
+        console.log("📂 JSON File Content:", jsonData);
+
+        setUploadedJson(jsonData);
+        console.log("✅ JSON File stored in state. Click 'Submit' to process it.");
+
+      } catch (error) {
+        console.error("❌ Error parsing JSON file:", error);
+      }
+    };
+  };
 
   const fetchBalance = async () => {
     if (!wallet.publicKey) return;
@@ -175,7 +211,7 @@ const storeDataInChunks = async () => {
       fetchBalance();
     }
   }, [wallet, provider]);
-  
+
   const retrieveStoredData = async () => {
     if (!connection || !pdaAddress) {
       console.warn("⚠️ Connection or Storage Account PDA not available.");
@@ -255,36 +291,45 @@ const storeDataInChunks = async () => {
 
 
       <div className="mt-6 w-full max-w-2xl">
-        <textarea
-          className="w-full h-48 bg-gray-800 text-white p-4 rounded-lg shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          placeholder="Write your book content here..."
-          value={bookContent}
-          onChange={(e) => setBookContent(e.target.value)}
-        ></textarea>
+        {/* File Upload Input */}
+        <input
+          type="file"
+          accept=".json"
+          onChange={handleFileUpload}
+          className="w-full bg-gray-800 text-white p-4 rounded-lg shadow-md cursor-pointer"
+        />
 
         <button
-          onClick={storeDataInChunks}
+          onClick={() => {
+            if (!uploadedJson) {
+              console.warn("⚠️ No JSON file uploaded yet!");
+              return;
+            }
+            storeDataInChunks(uploadedJson);
+          }}
           className="mt-4 bg-green-500 hover:bg-green-600 text-white font-bold px-6 py-3 rounded-lg shadow-lg transition-all w-full"
         >
           📩 Submit Book Content
         </button>
+
       </div>
 
+
       <div className="mt-6 w-full">
-          <input
-            type="text"
-            className="w-full bg-gray-800 text-white p-4 rounded-lg shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            placeholder="Enter PDA Address"
-            value={pdaAddress || ""}
-            onChange={(e) => setPdaAddress(e.target.value)}
-          />
-          <button
-            onClick={retrieveStoredData}
-            className="mt-4 bg-blue-500 hover:bg-blue-600 text-white font-bold px-6 py-3 rounded-lg shadow-lg transition-all w-full"
-          >
-            📥 Retrieve Stored Data
-          </button>
-        </div>
+        <input
+          type="text"
+          className="w-full bg-gray-800 text-white p-4 rounded-lg shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          placeholder="Enter PDA Address"
+          value={pdaAddress || ""}
+          onChange={(e) => setPdaAddress(e.target.value)}
+        />
+        <button
+          onClick={retrieveStoredData}
+          className="mt-4 bg-blue-500 hover:bg-blue-600 text-white font-bold px-6 py-3 rounded-lg shadow-lg transition-all w-full"
+        >
+          📥 Retrieve Stored Data
+        </button>
+      </div>
 
       {retrievedContent && (
         <div className="w-1/2 ml-8 bg-gray-800 p-6 rounded-lg shadow-lg">
