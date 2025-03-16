@@ -114,6 +114,7 @@ const storeDataInChunks = async () => {
 
       const encoder = new TextEncoder();
       const bookData = encoder.encode(bookContent);
+      const encrypted_data = await anchorBridge.light_msg_encryption("pdaAddress", bookData, 900);
 
       console.log(`📖 Preparing to store ${bookData.length} bytes of data.`);
       const txsBase64 = await anchorBridge.store_data_in_chunks(pdaAddress, bookData, 900);
