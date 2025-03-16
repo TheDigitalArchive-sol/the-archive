@@ -175,12 +175,8 @@ pub fn count_characters(input: &str) -> usize {
     input.chars().count()
 }
 
-pub fn light_msg_encryption(key: &str, json_file_path: &str) -> io::Result<Vec<u8>> {
-    let mut file = File::open(json_file_path)?;
-    let mut content: String = String::new();
-    file.read_to_string(&mut content)?;
-
-    let book_metadata: BookMetadata = serde_json::from_str(&content)?;
+pub fn light_msg_encryption(key: &str, rsd: &str) -> io::Result<Vec<u8>> {
+    let book_metadata: BookMetadata = serde_json::from_str(&rsd)?;
     let serialized_content = serde_json::to_string(&book_metadata)?;
     let mut iv = [0u8; 16];
     let hash = Sha256::digest(serialized_content.as_bytes());
@@ -193,7 +189,6 @@ pub fn light_msg_encryption(key: &str, json_file_path: &str) -> io::Result<Vec<u
     let compressed_data = compress_data(&data_with_iv);
     Ok(compressed_data)
 }
-
 
 pub fn light_msg_decryption(key: &str, cbd: Vec<u8>) -> io::Result<BookMetadata> {
     let encrypted_data = decompress_data(&cbd);
