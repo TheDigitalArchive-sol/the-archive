@@ -140,11 +140,9 @@ impl AnchorBridge {
     
         future_to_promise(async move {
             match light_writer_rs::light_msg_decryption(&key_owned, cbd) {
-                Ok(data) => Ok(to_value(&data).map_err(|e| JsValue::from_str(&format!("Serialization error: {}", e)))?),
-                Err(e) => Err(JsValue::from_str(&format!("Decryption error: {}", e))),
+                Ok(data) => { Ok(to_value(&data).map_err(|e| JsValue::from_str(&format!("Serialization error: {}", e)))?) }
+                Err(e) => { Err(JsValue::from_str(&format!("Decryption error: {}", e))) }
             }
         })
-    }
-    
-    
+    }   
 }
