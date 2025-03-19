@@ -136,8 +136,15 @@ impl AnchorBridge {
 
     #[wasm_bindgen]
     pub fn light_msg_decryption(&self, key: &str, cbd: Vec<u8>) -> Promise {
-        let data = light_writer_rs::light_msg_decryption(key, cbd).unwrap();
+        let key_owned = key.to_string();
+    
         future_to_promise(async move {
-        Ok(to_value(&data).map_err(|e| JsValue::from_str(&format!("Serialization error: {}", e)))?)})
+            match light_writer_rs::light_msg_decryption(&key_owned, cbd) {
+                Ok(data) => Ok(to_value(&data).map_err(|e| JsValue::from_str(&format!("Serialization error: {}", e)))?),
+                Err(e) => Err(JsValue::from_str(&format!("Decryption error: {}", e))),
+            }
+        })
     }
+    
+    
 }
