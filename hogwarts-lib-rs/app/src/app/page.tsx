@@ -152,6 +152,7 @@ export default function Home() {
       console.log("✅ All transactions signed!");
 
       for (const signedTx of signedTransactions) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
         const txId = await connection.sendRawTransaction(signedTx.serialize(), {
           skipPreflight: false,
           preflightCommitment: "confirmed",
@@ -212,12 +213,12 @@ export default function Home() {
     }
   }, [wallet, provider]);
 
-  const retrieveStoredData = async (key: any) => {
-    if (!connection || !pdaAddress) {
-      console.warn("⚠️ Connection or Storage Account PDA not available.");
+  const retrieveStoredData = async (key: string) => {
+    if (!connection || !pdaAddress || !anchorBridge) {
+      console.warn("⚠️ Connection, Storage Account PDA, or AnchorBridge not available.");
       return;
     }
-
+  
     try {
       console.log("📥 Retrieving stored book data...");
       const accountInfo = await connection.getAccountInfo(new PublicKey(pdaAddress));
@@ -225,9 +226,25 @@ export default function Home() {
         console.error("❌ No data found in storage account!");
         return;
       }
+  
       console.log("📏 Raw Data Length:", accountInfo.data.length);
+  
       const storedBytes = accountInfo.data.slice(8);
-      const storedText = anchorBridge.light_msg_decryption(key, storedBytes);
+      console.log("🔍 Stored Bytes:", storedBytes);
+  
+      if (!storedBytes || storedBytes.length === 0) {
+        console.error("❌ No valid data found in storage account!");
+        return;
+      }
+
+      let storedText;
+      try {
+        storedText = await anchorBridge.light_msg_decryption(key, storedBytes);
+      } catch (error) {
+        console.error("❌ Decryption failed:", error);
+        return;
+      }
+  
       console.log("📖 Stored Book Content:", storedText);
       setRetrievedContent(storedText);
     } catch (error) {
