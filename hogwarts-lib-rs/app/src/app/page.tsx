@@ -101,7 +101,7 @@ export default function Home() {
     }
   };
 
-  const storeDataInChunks = async (jsonData: any) => {
+  const storeDataInChunks = async (key: any, jsonData: any) => {
     if (!anchorBridge || !wallet.signAllTransactions || !connection || !pdaAddress) {
       console.warn("⚠️ Storage account not initialized or wallet unavailable.");
       return;
@@ -120,7 +120,7 @@ export default function Home() {
       let encrypted_data;
       try {
         console.log("🔍 Encrypting JSON data...");
-        encrypted_data = await anchorBridge.light_msg_encryption(pdaAddress, jsonString);
+        encrypted_data = await anchorBridge.light_msg_encryption(key, jsonString);
         console.log("✅ Encryption successful.");
       } catch (error) {
         console.error("❌ WASM encryption failed:", error);
@@ -212,7 +212,7 @@ export default function Home() {
     }
   }, [wallet, provider]);
 
-  const retrieveStoredData = async () => {
+  const retrieveStoredData = async (key: any) => {
     if (!connection || !pdaAddress) {
       console.warn("⚠️ Connection or Storage Account PDA not available.");
       return;
@@ -227,8 +227,7 @@ export default function Home() {
       }
       console.log("📏 Raw Data Length:", accountInfo.data.length);
       const storedBytes = accountInfo.data.slice(8);
-      const decoder = new TextDecoder();
-      const storedText = decoder.decode(storedBytes);
+      const storedText = anchorBridge.light_msg_decryption(key, storedBytes);
       console.log("📖 Stored Book Content:", storedText);
       setRetrievedContent(storedText);
     } catch (error) {
@@ -305,7 +304,7 @@ export default function Home() {
               console.warn("⚠️ No JSON file uploaded yet!");
               return;
             }
-            storeDataInChunks(uploadedJson);
+            storeDataInChunks("book1234567890123456789012345678", uploadedJson);
           }}
           className="mt-4 bg-green-500 hover:bg-green-600 text-white font-bold px-6 py-3 rounded-lg shadow-lg transition-all w-full"
         >
@@ -324,7 +323,7 @@ export default function Home() {
           onChange={(e) => setPdaAddress(e.target.value)}
         />
         <button
-          onClick={retrieveStoredData}
+          onClick={() => retrieveStoredData("book1234567890123456789012345678")}
           className="mt-4 bg-blue-500 hover:bg-blue-600 text-white font-bold px-6 py-3 rounded-lg shadow-lg transition-all w-full"
         >
           📥 Retrieve Stored Data
