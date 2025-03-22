@@ -5,7 +5,7 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-book-storage = "Fk3qBVpk9KCYunBMcdaCcUm3wA9zj7rgBtdu7mBU6CHc"
+book-storage = "8Besjdk7LVmnJfuCKAaM2sfAubbggvhgT597XFH8AXbj"
 
 [registry]
 url = "https://api.apr.dev"
