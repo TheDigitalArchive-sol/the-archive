@@ -6,7 +6,7 @@ import { useWallet } from "@solana/wallet-adapter-react";
 import { Connection, PublicKey } from "@solana/web3.js";
 import { useProvider } from "./utils";
 import { Program, Idl } from "@project-serum/anchor";
-import { Transaction, Message, VersionedTransaction } from "@solana/web3.js";
+import { Transaction, Message } from "@solana/web3.js";
 
 export default function Home() {
   const [isClient, setIsClient] = useState(false);
@@ -89,7 +89,10 @@ export default function Home() {
       const signedTransaction = await wallet.signTransaction(reconstructedTx);
       console.log("✅ Signed Transaction:", signedTransaction);
 
-      const transactionId = await connection.sendRawTransaction(signedTransaction.serialize(), { skipPreflight: false, preflightCommitment: "confirmed", });
+      const transactionId = await connection.sendRawTransaction(signedTransaction.serialize(), {
+        skipPreflight: false,
+        preflightCommitment: "confirmed",
+      });
       console.log("✅ Transaction ID:", transactionId);
 
       setTxId(transactionId);
@@ -219,7 +222,7 @@ export default function Home() {
       console.warn("⚠️ Connection, Storage Account PDA, or AnchorBridge not available.");
       return;
     }
-  
+
     try {
       console.log("📥 Retrieving stored book data...");
       const accountInfo = await connection.getAccountInfo(new PublicKey(pdaAddress));
@@ -227,19 +230,18 @@ export default function Home() {
         console.error("❌ No data found in storage account!");
         return;
       }
-  
+
       console.log("📏 Raw Data Length:", accountInfo.data.length);
-  
+
       let storedBytes = accountInfo.data.slice(20);
 
-      // Remove trailing 0x00 bytes from fetch
       while (storedBytes.length > 0 && storedBytes[storedBytes.length - 1] === 0) {
         storedBytes = storedBytes.slice(0, -1);
       }
-      
+
       console.log("✅ Encrypted Data (Hex) FROM CHAIN:", Buffer.from(storedBytes).toString("hex"));
       console.log("🔍 Stored Bytes:", storedBytes);
-  
+
       if (!storedBytes || storedBytes.length === 0) {
         console.error("❌ No valid data found in storage account!");
         return;
@@ -252,77 +254,53 @@ export default function Home() {
         console.error("❌ Decryption failed:", error);
         return;
       }
-  
+
       console.log("📖 Stored Book Content:", storedText);
       setRetrievedContent(storedText);
     } catch (error) {
       console.error("❌ Error retrieving stored data:", error);
     }
   };
+
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-r from-purple-900 to-black text-white p-8">
-      <h1 className="text-5xl font-extrabold mb-6 text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-blue-500">
-        The Digital Archive
-      </h1>
+    <div className="app-container">
+      <h1 className="app-title">The Digital Archive</h1>
 
-      {/* Wallet Connect Button */}
-      <div>
-        {isClient && (
-          <WalletMultiButton className="!bg-green-600 hover:!bg-green-700 text-white text-lg font-semibold px-6 py-3 rounded-lg shadow-lg transition-all" />
-        )}
-      </div>
+      {isClient && <WalletMultiButton className="btn-accent" />}
 
-      {/* Display Wallet Address */}
       {wallet.publicKey && (
-        <p className="mt-4 text-lg font-medium bg-gray-800 px-4 py-2 rounded-lg shadow-md">
+        <p className="wallet-info">
           ✅ Connected: {wallet.publicKey.toBase58().slice(0, 5)}...
           {wallet.publicKey.toBase58().slice(-5)}
         </p>
       )}
 
-      {/* Display Balance */}
       {wallet.publicKey && (
-        <div className="mt-6 text-xl font-semibold flex flex-col items-center">
-          <p className="bg-gray-900 px-6 py-3 rounded-lg shadow-md">
+        <div className="card">
+          <p className="balance-display">
             {loading ? "Loading..." : `💰 Balance: ${balance} SOL`}
           </p>
-
-          {/* Refresh Balance Button */}
-          <button
-            onClick={fetchBalance}
-            className="mt-4 bg-blue-500 hover:bg-blue-600 text-white px-5 py-2 rounded-lg text-lg font-semibold shadow-md transition-all"
-          >
+          <button onClick={fetchBalance} className="btn-primary mt-4">
             🔄 Refresh Balance
           </button>
         </div>
       )}
 
-      {/* Button to initialize storage account */}
-      <button
-        onClick={initializeStorageAccount}
-        className="bg-yellow-500 hover:bg-yellow-600 text-black font-bold px-6 py-3 rounded-lg shadow-lg transition-all"
-      >
+      <button onClick={initializeStorageAccount} className="btn-warning mt-6">
         🚀 Initialize Storage Account
       </button>
-      {/* Display PDA Info After Transaction */}
 
       {pdaAddress && (
-        <div className="mt-6 text-lg font-medium bg-gray-800 px-6 py-3 rounded-lg shadow-md">
+        <div className="card mt-6 text-lg font-medium">
           <p>📌 <b>PDA Address:</b> {pdaAddress}</p>
-          {txId && <p>🔗 <b>Transaction ID:</b> <a target="_blank" className="text-blue-400 underline">{txId}</a></p>}
+          {txId && (
+            <p>🔗 <b>Transaction ID:</b> <a target="_blank" className="text-blue-400 underline">{txId}</a></p>
+          )}
         </div>
       )}
 
-
       <div className="mt-6 w-full max-w-2xl">
-        {/* File Upload Input */}
-        <input
-          type="file"
-          accept=".json"
-          onChange={handleFileUpload}
-          className="w-full bg-gray-800 text-white p-4 rounded-lg shadow-md cursor-pointer"
-        />
-
+        <input type="file" accept=".json" onChange={handleFileUpload} className="file-input" />
         <button
           onClick={() => {
             if (!uploadedJson) {
@@ -331,39 +309,34 @@ export default function Home() {
             }
             storeDataInChunks("book1234567890123456789012345678", uploadedJson);
           }}
-          className="mt-4 bg-green-500 hover:bg-green-600 text-white font-bold px-6 py-3 rounded-lg shadow-lg transition-all w-full"
+          className="btn-accent mt-4 w-full"
         >
           📩 Submit Book Content
         </button>
-
       </div>
-
 
       <div className="mt-6 w-full">
         <input
           type="text"
-          className="w-full bg-gray-800 text-white p-4 rounded-lg shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="input-box"
           placeholder="Enter PDA Address"
           value={pdaAddress || ""}
           onChange={(e) => setPdaAddress(e.target.value)}
         />
         <button
           onClick={() => retrieveStoredData("book1234567890123456789012345678")}
-          className="mt-4 bg-blue-500 hover:bg-blue-600 text-white font-bold px-6 py-3 rounded-lg shadow-lg transition-all w-full"
+          className="btn-primary mt-4 w-full"
         >
           📥 Retrieve Stored Data
         </button>
       </div>
 
       {retrievedContent && (
-        <div className="w-1/2 ml-8 bg-gray-800 p-6 rounded-lg shadow-lg">
-          <h2 className="text-xl font-semibold mb-4">📖 Retrieved Content</h2>
-          <pre className="whitespace-pre-wrap text-gray-300 text-sm">
-            {JSON.stringify(retrievedContent, null, 2)}
-          </pre>
+        <div className="retrieved-content">
+          <h2 className="retrieved-content-title">📖 Retrieved Content</h2>
+          <pre className="retrieved-content-body">{JSON.stringify(retrievedContent, null, 2)}</pre>
         </div>
       )}
-
     </div>
   );
 }

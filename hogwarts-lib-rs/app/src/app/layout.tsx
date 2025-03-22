@@ -1,4 +1,5 @@
 "use client";
+import './globals.css'; // Make sure this matches your file path
 
 import React, { ReactNode, useMemo } from "react";
 import { ConnectionProvider, WalletProvider } from "@solana/wallet-adapter-react";
