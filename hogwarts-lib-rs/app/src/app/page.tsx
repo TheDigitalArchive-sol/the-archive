@@ -358,7 +358,9 @@ export default function Home() {
       {retrievedContent && (
         <div className="w-1/2 ml-8 bg-gray-800 p-6 rounded-lg shadow-lg">
           <h2 className="text-xl font-semibold mb-4">📖 Retrieved Content</h2>
-          <p className="whitespace-pre-wrap text-gray-300">{retrievedContent}</p>
+          <pre className="whitespace-pre-wrap text-gray-300 text-sm">
+            {JSON.stringify(retrievedContent, null, 2)}
+          </pre>
         </div>
       )}
 
