@@ -1,6 +1,5 @@
 pub mod book_types;
 use book_types::{BookMetadata, Chapter, Page};
-use rand::{rng, RngCore};
 use sha2::{Digest, Sha256};
 use std::{cmp::min, env, fs::{self, File}, io::{self, Read, Write}, path::Path};
 use regex::Regex;
@@ -176,15 +175,12 @@ pub fn count_characters(input: &str) -> usize {
     input.chars().count()
 }
 
-pub fn light_msg_encryption(key: &str, json_file_path: &str) -> io::Result<Vec<u8>> {
-    let mut file = File::open(json_file_path)?;
-    let mut content: String = String::new();
-    file.read_to_string(&mut content)?;
-
-    let book_metadata: BookMetadata = serde_json::from_str(&content)?;
+pub fn light_msg_encryption(key: &str, rsd: &str) -> io::Result<Vec<u8>> {
+    let book_metadata: BookMetadata = serde_json::from_str(&rsd)?;
     let serialized_content = serde_json::to_string(&book_metadata)?;
     let mut iv = [0u8; 16];
-    rng().fill_bytes(&mut iv);
+    let hash = Sha256::digest(serialized_content.as_bytes());
+    iv.copy_from_slice(&hash[..16]);
     let cipher = Aes256Cbc::new_from_slices(key.as_bytes(), &iv).map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
     let encrypted_bytes = cipher.encrypt_vec(serialized_content.as_bytes());
     let mut data_with_iv = iv.to_vec();
@@ -193,7 +189,6 @@ pub fn light_msg_encryption(key: &str, json_file_path: &str) -> io::Result<Vec<u
     let compressed_data = compress_data(&data_with_iv);
     Ok(compressed_data)
 }
-
 
 pub fn light_msg_decryption(key: &str, cbd: Vec<u8>) -> io::Result<BookMetadata> {
     let encrypted_data = decompress_data(&cbd);
