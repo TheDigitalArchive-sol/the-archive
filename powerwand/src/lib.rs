@@ -1,3 +1,4 @@
+use base64::encode; //tmp import string check
 use solana_sdk::instruction::{AccountMeta, Instruction};
 use solana_sdk::message::Message;
 use solana_sdk::pubkey::Pubkey;
@@ -125,7 +126,7 @@ impl AnchorBridge {
                 return Promise::reject(&JsValue::from_str(&format!("Encryption error: {}", err)));
             }
         };
-    
+        eprintln!("🔍 Debug: light_msg_encryption.Test (unsafe): {:?}", encode(rsd));
         eprintln!("✅ Encryption successful!");
         
         future_to_promise(async move {
@@ -136,6 +137,7 @@ impl AnchorBridge {
 
     #[wasm_bindgen]
     pub fn light_msg_decryption(&self, key: &str, cbd: Vec<u8>) -> Promise {
+        eprintln!("🔍 Debug: light_msg_decryption.Test (unsafe): {:?}", encode(cbd.clone()));
         let key_owned = key.to_string();
     
         future_to_promise(async move {
