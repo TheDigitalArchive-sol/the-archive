@@ -122,6 +122,7 @@ export default function Home() {
         console.log("🔍 Encrypting JSON data...");
         encrypted_data = await anchorBridge.light_msg_encryption(key, jsonString);
         console.log("✅ Encryption successful.");
+        console.log("✅ Encrypted Data (Hex):", Buffer.from(encrypted_data).toString("hex"));
       } catch (error) {
         console.error("❌ WASM encryption failed:", error);
         return;
@@ -229,7 +230,14 @@ export default function Home() {
   
       console.log("📏 Raw Data Length:", accountInfo.data.length);
   
-      const storedBytes = accountInfo.data.slice(8);
+      let storedBytes = accountInfo.data.slice(20);
+
+      // Remove trailing 0x00 bytes from fetch
+      while (storedBytes.length > 0 && storedBytes[storedBytes.length - 1] === 0) {
+        storedBytes = storedBytes.slice(0, -1);
+      }
+      
+      console.log("✅ Encrypted Data (Hex) FROM CHAIN:", Buffer.from(storedBytes).toString("hex"));
       console.log("🔍 Stored Bytes:", storedBytes);
   
       if (!storedBytes || storedBytes.length === 0) {
