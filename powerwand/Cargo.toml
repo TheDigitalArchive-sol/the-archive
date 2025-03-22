@@ -17,8 +17,8 @@ serde-wasm-bindgen    = { workspace = true}
 borsh                 = { workspace = true}
 base64                = { workspace = true}
 # Internal lib
-light-writer-rs = { path = "../light-writer-rs" }
-book-storage = { path = "../hogwarts-lib-rs/programs/book-storage" }
+light-writer-rs       = { path = "../light-writer-rs" }
+book-storage          = { path = "../hogwarts-lib-rs/programs/book-storage" }
 
 [lib]
 crate-type = ["cdylib", "rlib"]

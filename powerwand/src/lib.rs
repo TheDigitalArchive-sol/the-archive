@@ -1,4 +1,3 @@
-use base64::encode; //tmp import string check
 use solana_sdk::instruction::{AccountMeta, Instruction};
 use solana_sdk::message::Message;
 use solana_sdk::pubkey::Pubkey;
