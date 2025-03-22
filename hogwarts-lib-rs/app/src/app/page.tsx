@@ -26,7 +26,8 @@ export default function Home() {
 
   const connection = new Connection("http://127.0.0.1:8899");
   const PROGRAM_ID = "8Besjdk7LVmnJfuCKAaM2sfAubbggvhgT597XFH8AXbj";
-
+  const unsafe_key = "book1234567890123456789012345678";
+  
   useEffect(() => {
     if (!PROGRAM_ID) {
       console.error("❌ Missing PROGRAM_ID!");
@@ -307,7 +308,7 @@ export default function Home() {
               console.warn("⚠️ No JSON file uploaded yet!");
               return;
             }
-            storeDataInChunks("book1234567890123456789012345678", uploadedJson);
+            storeDataInChunks(unsafe_key, uploadedJson);
           }}
           className="btn-accent mt-4 w-full"
         >
@@ -324,7 +325,7 @@ export default function Home() {
           onChange={(e) => setPdaAddress(e.target.value)}
         />
         <button
-          onClick={() => retrieveStoredData("book1234567890123456789012345678")}
+          onClick={() => retrieveStoredData(unsafe_key)}
           className="btn-primary mt-4 w-full"
         >
           📥 Retrieve Stored Data
