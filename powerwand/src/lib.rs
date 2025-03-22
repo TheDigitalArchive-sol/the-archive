@@ -4,7 +4,7 @@ use solana_sdk::message::Message;
 use solana_sdk::pubkey::Pubkey;
 use solana_sdk::transaction::Transaction;
 use wasm_bindgen::prelude::*;
-use wasm_bindgen_futures::js_sys::Promise;
+use wasm_bindgen_futures::js_sys::{Promise, Uint8Array};
 use wasm_bindgen_futures::{future_to_promise, wasm_bindgen};
 use serde_wasm_bindgen::to_value;
 use borsh::{BorshDeserialize, BorshSerialize};
@@ -115,36 +115,27 @@ impl AnchorBridge {
 
 
     #[wasm_bindgen]
-    pub fn light_msg_encryption(&self, key: &str, rsd: &str) -> Promise {
+    pub fn light_msg_encryption(&self, key: &str, rsd: &str) -> Result<Uint8Array, JsValue> {
         eprintln!("🔍 Debug: Received key: {:?}", key);
         eprintln!("🔍 Debug: Received JSON: {:?}", rsd);
     
-        let data = match light_writer_rs::light_msg_encryption(key, rsd) {
-            Ok(result) => result,
-            Err(err) => {
-                eprintln!("❌ Encryption error: {:?}", err);
-                return Promise::reject(&JsValue::from_str(&format!("Encryption error: {}", err)));
-            }
-        };
-        eprintln!("🔍 Debug: light_msg_encryption.Test (unsafe): {:?}", encode(rsd));
+        let data = light_writer_rs::light_msg_encryption(key, rsd)
+            .map_err(|err| JsValue::from_str(&format!("Encryption error: {}", err)))?;
+    
         eprintln!("✅ Encryption successful!");
-        
-        future_to_promise(async move {
-            Ok(to_value(&data).map_err(|e| JsValue::from_str(&format!("Serialization error: {}", e)))?)
-        })
+        Ok(Uint8Array::from(&data[..]))
     }
     
 
     #[wasm_bindgen]
-    pub fn light_msg_decryption(&self, key: &str, cbd: Vec<u8>) -> Promise {
-        eprintln!("🔍 Debug: light_msg_decryption.Test (unsafe): {:?}", encode(cbd.clone()));
-        let key_owned = key.to_string();
+    pub fn light_msg_decryption(&self, key: &str, cbd: &[u8]) -> Result<JsValue, JsValue> {
+        eprintln!("🔍 Decrypting buffer of len: {:?}", cbd.len());
     
-        future_to_promise(async move {
-            match light_writer_rs::light_msg_decryption(&key_owned, cbd) {
-                Ok(data) => { Ok(to_value(&data).map_err(|e| JsValue::from_str(&format!("Serialization error: {}", e)))?) }
-                Err(e) => { Err(JsValue::from_str(&format!("Decryption error: {}", e))) }
-            }
-        })
-    }   
+        let data = light_writer_rs::light_msg_decryption(key, cbd.to_vec())
+            .map_err(|e| JsValue::from_str(&format!("Decryption error: {}", e)))?;
+    
+        to_value(&data).map_err(|e| JsValue::from_str(&format!("Serialization error: {}", e)))
+    }
+    
+     
 }
