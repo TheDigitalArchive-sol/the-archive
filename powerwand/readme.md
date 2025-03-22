@@ -1,13 +1,22 @@
 # Powerwand Repo contains the POC of how to Publish a book in the archive
 
-## Setup the environment
-Edit the env.example file and run the following command
+## Build Wasm
+Run:
 ```bash
-cp env.example .env
+wasm-pack build --release --target web
 ```
 
-## Deploy Solana Programs
+## Build The Release
 ```bash
-# This will update the pubkeys in .env
+cargo make build
+```
+
+## Run The Release
+```bash
+cargo make run
+```
+
+## Deploy Programs on Chain
+```bash
 cargo make book-storage-deploy
 ```

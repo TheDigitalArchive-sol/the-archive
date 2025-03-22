@@ -1,5 +1,14 @@
 # Managing Submodules in `the-archive`
 
+### Clone the main repo and init the submodule
+```sh
+git clone --recurse-submodules git@github.com:TheDigitalArchive/the-archive.git
+cd the-archive
+cd blockchain-devops
+git sparse-checkout init --cone
+git sparse-checkout set solana_setup
+```
+
 ## Overview
 This repository (`the-archive`) integrates multiple external repositories (submodules) to maintain modularity and allow easy updates from upstream sources. This guide explains how to add, update, and manage these submodules efficiently.
 

@@ -9,9 +9,15 @@ const MAX_REALLOC_STEP: usize = 10_240;
 pub mod book_storage {
     use super::*;
 
-    pub fn initialize(ctx: Context<Initialize>, total_size: u32, total_chunks: u32) -> Result<()> {
+    pub fn initialize(ctx: Context<Initialize>, seed: String, total_size: u32, total_chunks: u32) -> Result<()> {
+        msg!("✅ Instruction: Initialize");
+        msg!("📌 Seed: {}", seed);
+        msg!("📌 Total Size: {}", total_size);
+        msg!("📌 Total Chunks: {}", total_chunks);
         let storage_account = &mut ctx.accounts.storage_account;
         let total_storage_size = total_size * total_chunks; 
+        // let expected_pda = Pubkey::find_program_address(&[seed.as_bytes()], ctx.program_id).0;
+        // require_keys_eq!(storage_account.key(), expected_pda, ErrorCode::InvalidStorageAccount);
     
         storage_account.total_size = total_storage_size;
         storage_account.total_chunks = total_chunks;
@@ -71,12 +77,14 @@ pub struct StorageAccount {
 }
 
 #[derive(Accounts)]
-#[instruction(total_size: u32, total_chunks: u32)]
+#[instruction(seed: String, total_size: u32, total_chunks: u32)]
 pub struct Initialize<'info> {
     #[account(
-        init, 
-        payer = user, 
-        space = 8 + 4 + 4 + (total_size as usize * total_chunks as usize)
+        init,
+        payer = user,
+        space = 8 + 4 + 4 + (total_size as usize * total_chunks as usize),
+        seeds = [seed.as_bytes()],
+        bump
     )]
     pub storage_account: Account<'info, StorageAccount>,
     #[account(mut)]
@@ -97,4 +105,6 @@ pub struct StoreData<'info> {
 pub enum ErrorCode {
     #[msg("Storage limit exceeded.")]
     StorageLimitExceeded,
+    #[msg("Invalid storage account PDA.")]
+    InvalidStorageAccount,
 }

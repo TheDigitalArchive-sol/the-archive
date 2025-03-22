@@ -4,22 +4,25 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-serde          = { workspace = true, optional = true }
-serde_json     = { workspace = true, optional = true }
-dotenv         = { workspace = true }
-zstd           = { workspace = true, optional = true }
-anchor-client  = { workspace = true }
-anchor-lang    = { workspace = true }
-# solana-sdk     = { workspace = true, optional = true }
-tokio          = { workspace = true }
-hex            = { workspace = true, optional = true }
-anyhow         = { workspace = true, optional = true }
-anchor-spl     = { workspace = true }
-mpl-token-metadata  = { workspace = true }
-solana-program = "2.2.1" 
-solana-sdk = "2.2.1"
+serde                 = { workspace = true, optional = true }
+serde_json            = { workspace = true, optional = true }
+dotenv                = { workspace = true }
+zstd                  = { workspace = true, optional = true }
+anchor-lang           = { workspace = true}
+solana-sdk            = { workspace = true }
+hex                   = { workspace = true, optional = true }
+anyhow                = { workspace = true, optional = true }
+wasm-bindgen-futures  = { workspace = true}
+serde-wasm-bindgen    = { workspace = true}
+borsh                 = { workspace = true}
+base64                = { workspace = true}
 # Internal lib
-light-writer-rs = { path = "../light-writer-rs" }
-book-cover = { path = "../hogwarts-lib-rs/programs/book-cover", features = ["no-entrypoint"] }
-book-storage = { path = "../hogwarts-lib-rs/programs/book-storage", features = ["no-entrypoint"] }
+light-writer-rs       = { path = "../light-writer-rs" }
+book-storage          = { path = "../hogwarts-lib-rs/programs/book-storage" }
 
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+default = []
+wasm = []
