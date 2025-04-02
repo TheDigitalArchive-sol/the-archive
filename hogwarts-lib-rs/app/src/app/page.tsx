@@ -8,6 +8,25 @@ import { useProvider } from "./utils";
 import { Program, Idl } from "@project-serum/anchor";
 import { Transaction, Message } from "@solana/web3.js";
 
+
+const metaplex = Metaplex.make(new Connection("http://127.0.0.1:8899"));
+
+import {
+  Metaplex,
+  keypairIdentity,
+  walletAdapterIdentity
+} from '@metaplex-foundation/js';
+
+import {
+  createGenericFile,
+  generateSigner,
+  signerIdentity,
+  sol,
+} from '@metaplex-foundation/umi'
+
+import { irysUploader } from '@metaplex-foundation/umi-uploader-irys'
+import { base58 } from '@metaplex-foundation/umi/serializers'
+
 export default function Home() {
   const [isClient, setIsClient] = useState(false);
   const [wasm, setWasm] = useState<any | null>(null);
@@ -25,6 +44,7 @@ export default function Home() {
   const [uploadedJson, setUploadedJson] = useState<any | null>(null);
 
   const connection = new Connection("http://127.0.0.1:8899");
+
   const PROGRAM_ID = "8Besjdk7LVmnJfuCKAaM2sfAubbggvhgT597XFH8AXbj";
   const unsafe_key = "book1234567890123456789012345678";
   
@@ -263,6 +283,52 @@ export default function Home() {
     }
   };
 
+  const mintNft = async (wallet: any, uploadedJson: any) => {
+    try {
+      if (!wallet || !wallet.publicKey) {
+        console.error("❌ Wallet not connected!");
+        return;
+      }
+  
+      const metaplex = Metaplex.make(connection).use(walletAdapterIdentity(wallet));
+  
+      const metadata = {
+        name: uploadedJson?.title || "The Digital Archive - Book #1",
+        description: uploadedJson?.description || "First & Unique",
+        image: uploadedJson?.image, // Must be a URL or file object handled by bundlr
+        external_url: uploadedJson?.external_url || "https://thedigitalarchive.sol",
+        attributes: uploadedJson?.attributes || [],
+        properties: {
+          files: [
+            {
+              uri: uploadedJson?.image,
+              type: "image/png",
+            },
+          ],
+          category: "image",
+        },
+      };
+  
+      console.log("📤 Uploading metadata to Bundlr...");
+      const uri = "https://arweave.net/eR4wgSnWusIG-xF2BZzsiOwVehQsvfCT8VAUC4NHQ5Y"; // this is a mock-test from arweave!!! (Localnet hack for testing)
+      console.log("✅ Metadata uploaded:", uri);
+  
+      const { nft } = await metaplex.nfts().create({
+        uri,
+        name: metadata.name,
+        sellerFeeBasisPoints: 600,
+      });
+  
+      console.log("✅ NFT minted!");
+      console.log(`🧾 NFT Mint Address: ${nft.address.toBase58()}`);
+      console.log(`🌐 View on Solana Explorer: https://explorer.solana.com/address/${nft.address.toBase58()}?cluster=devnet`);
+  
+    } catch (error) {
+      console.error("❌ Error minting NFT:", error);
+    }
+  };
+  
+
   return (
     <div className="app-container">
       <h1 className="app-title">The Digital Archive</h1>
@@ -338,6 +404,100 @@ export default function Home() {
           <pre className="retrieved-content-body">{JSON.stringify(retrievedContent, null, 2)}</pre>
         </div>
       )}
+
+      <div className="mt-10 w-full max-w-2xl space-y-4">
+        <h2 className="text-xl font-semibold">🧾 Mint Book NFT</h2>
+
+        <input
+          className="input-box"
+          type="text"
+          placeholder="Book Title"
+          value={uploadedJson?.title || "The Digital Archive"}
+          onChange={(e) => setUploadedJson({ ...uploadedJson, name: e.target.value })}
+        />
+
+        <input
+          className="input-box"
+          type="text"
+          placeholder="Symbol"
+          value={uploadedJson?.symbol || "TDA"}
+          onChange={(e) => setUploadedJson({ ...uploadedJson, symbol: e.target.value })}
+        />
+
+        <textarea
+          className="input-box"
+          placeholder="Description"
+          value={uploadedJson?.description || "The Digital Archive Story"}
+          onChange={(e) => setUploadedJson({ ...uploadedJson, description: e.target.value })}
+        />
+
+        <input
+          className="input-box"
+          type="text"
+          placeholder="Image URL"
+          value={uploadedJson?.image || "http://thedigitalarchive.com"}
+          onChange={(e) => setUploadedJson({ ...uploadedJson, image: e.target.value })}
+        />
+
+        <input
+          className="input-box"
+          type="text"
+          placeholder="Author"
+          value={uploadedJson?.attributes?.[0]?.value || "CqDhZbsAs41kWYA5wbJ8oMZ5tjhiujfqkdHafGmpp2Cu"}
+          onChange={(e) =>
+            setUploadedJson({
+              ...uploadedJson,
+              attributes: [
+                { trait_type: "Author", value: e.target.value },
+                uploadedJson?.attributes?.[1] || { trait_type: "Genre", value: "" },
+              ],
+            })
+          }
+        />
+
+        <input
+          className="input-box"
+          type="text"
+          placeholder="Genre"
+          value={uploadedJson?.attributes?.[1]?.value || "Informative"}
+          onChange={(e) =>
+            setUploadedJson({
+              ...uploadedJson,
+              attributes: [
+                uploadedJson?.attributes?.[0] || { trait_type: "Author", value: "4jNggaAqfahXvFHcz1QorcSaDKUaNDeY7SpYaHgXbDEU" },
+                { trait_type: "Genre", value: e.target.value },
+              ],
+            })
+          }
+        />
+
+        <button
+          className="btn-success w-full"
+          onClick={() => {
+            const metadataJson = {
+              ...uploadedJson,
+              properties: {
+                ...uploadedJson.properties,
+                creators: [
+                  {
+                    address: wallet.publicKey?.toBase58(),
+                    share: 100,
+                  },
+                ],
+              },
+            };
+
+            const blob = new Blob([JSON.stringify(metadataJson)], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            mintNft(wallet, url);
+          }}
+        >
+          🚀 Mint NFT
+        </button>
+      </div>
+
+
+
     </div>
   );
 }
