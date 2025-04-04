@@ -269,12 +269,69 @@ export default function Home() {
     }
   };
 
-  const mintNft = async (wallet: any, uploadedJson: any) => {
+  const buildRoyaltyCreators = (json: any): { address: PublicKey; share: number }[] => {
+    const roleWeight: any = {
+      authors: 3,
+      illustrator: 2,
+      editor: 1,
+      translator: 1,
+      publisher: 1,
+    };
+  
+    const contributorMap: Record<string, number> = {};
+  
+    for (const role in roleWeight) {
+      const value = json[role];
+      if (!value) continue;
+  
+      const contributors = Array.isArray(value) ? value : [value];
+      for (const wallet of contributors) {
+        if (!wallet) continue;
+        contributorMap[wallet] = (contributorMap[wallet] || 0) + roleWeight[role];
+      }
+    }
+  
+    const totalWeight = Object.values(contributorMap).reduce((a, b) => a + b, 0);
+  
+    const rawShares = Object.entries(contributorMap).map(([wallet, weight]) => {
+      const exactShare = (weight / totalWeight) * 100;
+      return {
+        wallet,
+        exactShare,
+        floored: Math.floor(exactShare),
+        remainder: exactShare % 1,
+      };
+    });
+  
+    let currentTotal = rawShares.reduce((sum, item) => sum + item.floored, 0);
+    let pointsToDistribute = 100 - currentTotal;
+  
+    rawShares.sort((a, b) => b.remainder - a.remainder);
+  
+    for (let i = 0; i < rawShares.length && pointsToDistribute > 0; i++) {
+      rawShares[i].floored += 1;
+      pointsToDistribute--;
+    }
+  
+    return rawShares.map((entry) => ({
+      address: new PublicKey(entry.wallet),
+      share: entry.floored,
+    }));
+  };
+  
+
+  const mintNft = async (wallet: any, uploadedJsonUrl: string) => {
     try {
       if (!wallet || !wallet.publicKey) {
         console.error("❌ Wallet not connected!");
         return;
       }
+  
+      const response = await fetch(uploadedJsonUrl);
+      const uploadedJson = await response.json();
+  
+      const creators = buildRoyaltyCreators(uploadedJson);
+      console.log("✅ Parsed Creators:", creators);
   
       const metaplex = Metaplex.make(connection).use(walletAdapterIdentity(wallet));
   
@@ -284,6 +341,7 @@ export default function Home() {
         uri,
         name: uploadedJson?.title || "The Digital Archive - Book #1",
         sellerFeeBasisPoints: 600,
+        creators,
       });
   
       console.log("✅ NFT minted!");
