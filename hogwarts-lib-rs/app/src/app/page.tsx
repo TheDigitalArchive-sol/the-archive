@@ -125,8 +125,14 @@ export default function Home() {
 
       console.log("📖 Preparing JSON data for encryption...");
 
+      jsonData.publisher = wallet.publicKey?.toBase58?.() || jsonData.publisher;
+      const today = new Date();
+      const formattedDate = `${String(today.getDate()).padStart(2, '0')}/${String(today.getMonth() + 1).padStart(2, '0')}/${today.getFullYear()}`;
+      
+      jsonData.publication_date = jsonData.publication_date || formattedDate;
+      jsonData.isbn = jsonData.isbn || anchorBridge.generate_isbn(jsonData.title, jsonData.authors);
+      
       const jsonString = JSON.stringify(jsonData);
-
       let encrypted_data;
       try {
         console.log("🔍 Encrypting JSON data...");
