@@ -135,6 +135,12 @@ impl AnchorBridge {
     
         to_value(&data).map_err(|e| JsValue::from_str(&format!("Serialization error: {}", e)))
     }
+
+    #[wasm_bindgen]
+    pub fn generate_isbn(&self, title: &str, authors: &str) -> Result<JsValue, JsValue> {
     
-     
+        let data = light_writer_rs::generate_isbn(title, authors);    
+        to_value(&data).map_err(|e| JsValue::from_str(&format!("Serialization error: {}", e)))
+    }
+    
 }
