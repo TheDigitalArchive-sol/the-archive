@@ -7,6 +7,7 @@ import { Connection, PublicKey } from "@solana/web3.js";
 import { useProvider } from "./utils";
 import { Program, Idl } from "@project-serum/anchor";
 import { Transaction, Message } from "@solana/web3.js";
+import { useRouter } from 'next/navigation';
 
 import {
   Metaplex,
@@ -28,6 +29,7 @@ export default function Home() {
   const [bookContent, setBookContent] = useState("");
   const [retrievedContent, setRetrievedContent] = useState<string | null>(null);
   const [uploadedJson, setUploadedJson] = useState<any | null>(null);
+  const router = useRouter();
 
   const connection = new Connection("http://127.0.0.1:8899");
 
@@ -276,7 +278,7 @@ export default function Home() {
   };
 
   const buildRoyaltyCreators = (json: any): { address: PublicKey; share: number }[] => {
-    const roleWeight: any = {
+    const roleWeight: Record<string, number> = {
       authors: 3,
       illustrator: 2,
       editor: 1,
@@ -284,7 +286,7 @@ export default function Home() {
       publisher: 1,
     };
   
-    const contributorMap: Record<string, number> = {};
+    const contributorMap: Record<string, { weight: number; role: string[] }> = {};
   
     for (const role in roleWeight) {
       const value = json[role];
@@ -293,31 +295,43 @@ export default function Home() {
       const contributors = Array.isArray(value) ? value : [value];
       for (const wallet of contributors) {
         if (!wallet) continue;
-        contributorMap[wallet] = (contributorMap[wallet] || 0) + roleWeight[role];
+  
+        if (!contributorMap[wallet]) {
+          contributorMap[wallet] = { weight: 0, role: [] };
+        }
+  
+        contributorMap[wallet].weight += roleWeight[role];
+        contributorMap[wallet].role.push(role);
       }
     }
   
-    const totalWeight = Object.values(contributorMap).reduce((a, b) => a + b, 0);
+    const totalWeight = Object.values(contributorMap).reduce((sum, c) => sum + c.weight, 0);
   
-    const rawShares = Object.entries(contributorMap).map(([wallet, weight]) => {
-      const exactShare = (weight / totalWeight) * 100;
+    let rawShares = Object.entries(contributorMap).map(([wallet, info]) => {
+      const exactShare = (info.weight / totalWeight) * 100;
       return {
         wallet,
+        roles: info.role,
         exactShare,
         floored: Math.floor(exactShare),
         remainder: exactShare % 1,
       };
     });
   
-    let currentTotal = rawShares.reduce((sum, item) => sum + item.floored, 0);
-    let pointsToDistribute = 100 - currentTotal;
-  
+    let currentTotal = rawShares.reduce((sum, r) => sum + r.floored, 0);
+    let toDistribute = 100 - currentTotal;
     rawShares.sort((a, b) => b.remainder - a.remainder);
   
-    for (let i = 0; i < rawShares.length && pointsToDistribute > 0; i++) {
+    for (let i = 0; i < rawShares.length && toDistribute > 0; i++) {
       rawShares[i].floored += 1;
-      pointsToDistribute--;
+      toDistribute--;
     }
+  
+    rawShares.sort((a, b) => {
+      const aIsPublisher = a.roles.includes('publisher') ? -1 : 0;
+      const bIsPublisher = b.roles.includes('publisher') ? -1 : 0;
+      return aIsPublisher - bIsPublisher;
+    });
   
     return rawShares.map((entry) => ({
       address: new PublicKey(entry.wallet),
@@ -372,6 +386,13 @@ export default function Home() {
           {wallet.publicKey.toBase58().slice(-5)}
         </p>
       )}
+
+      <button
+        className="btn-accent mt-8"
+        onClick={() => router.push('/bookshelf')}
+      >
+        📚 Explore The Bookshelf
+      </button>
 
       {wallet.publicKey && (
         <div className="card">
