@@ -363,6 +363,7 @@ export default function Home() {
         name: uploadedJson?.title || "The Digital Archive - Book #1",
         sellerFeeBasisPoints: 600,
         creators,
+        maxSupply: null, // null = unlimited
       });
   
       console.log("✅ NFT minted!");

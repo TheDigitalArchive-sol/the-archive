@@ -10,6 +10,7 @@ type NftDisplay = {
   title: string;
   image: string;
   uri: string;
+  copiesSold?: number;
 };
 
 export default function BookshelfPage() {
@@ -19,10 +20,10 @@ export default function BookshelfPage() {
   const wallet = useWallet();
   const connection = new Connection('http://127.0.0.1:8899');
   const ORG_CREATOR_PUBKEY = process.env.NEXT_PUBLIC_ORG_CREATOR_PUBKEY!;
+  const metaplex = Metaplex.make(connection).use(walletAdapterIdentity(wallet));
 
   useEffect(() => {
     const fetchNFTs = async () => {
-      const metaplex = Metaplex.make(connection).use(walletAdapterIdentity(wallet));
       const OCP = new PublicKey(ORG_CREATOR_PUBKEY);
   
       try {
@@ -45,8 +46,8 @@ export default function BookshelfPage() {
         for (const metadata of metadataList) {
           try {
             const nft = await metaplex.nfts().findByMint({
-              mintAddress: isMetadata(metadata) ? metadata.mintAddress : metadata.address
-              ,
+              mintAddress: isMetadata(metadata) ? metadata.mintAddress : metadata.address,
+              loadJsonMetadata: true,
             });
   
             const includesOrg = (nft.creators ?? []).some(
@@ -55,13 +56,20 @@ export default function BookshelfPage() {
   
             if (!includesOrg || !nft.json?.image) continue;
   
+            let copiesSold = 1;
+
+            if ("edition" in nft && nft.edition?.isOriginal) {
+              copiesSold = Number(nft.edition.supply);
+            }            
+            
             loaded.push({
               mintAddress: nft.address.toBase58(),
               title: nft.name,
               image: nft.json.image,
               uri: nft.uri,
+              copiesSold,
             });
-  
+            
             await new Promise((r) => setTimeout(r, 100)); // Rate limit!!
           } catch (e) {
             console.warn('⚠️ Failed to load NFT metadata:', e);
@@ -105,6 +113,10 @@ export default function BookshelfPage() {
                 🪙 {nft.mintAddress.slice(0, 6)}...{nft.mintAddress.slice(-4)}
               </p>
 
+              <p className="text-sm text-gray-400 mb-4">
+              📦 Copies Sold: {nft.copiesSold}
+              </p>
+
               <div className="flex flex-col w-full gap-2">
                 <a
                   href={`https://explorer.solana.com/address/${nft.mintAddress}?cluster=devnet`}
@@ -115,7 +127,17 @@ export default function BookshelfPage() {
                   📖 View on Explorer
                 </a>
                 <button
-                  onClick={() => console.log(`Mint again ${nft.mintAddress}`)}
+                  onClick={async () => {
+                    try {
+                      const edition = await metaplex.nfts().printNewEdition({
+                        originalMint: new PublicKey(nft.mintAddress),
+                      });
+                      console.log("✅ Printed new edition!");
+                      console.log("📦 Edition address:", edition.nft.address.toBase58());
+                    } catch (e) {
+                      console.error("❌ Failed to mint edition copy:", e);
+                    }
+                  }}
                   className="btn-primary"
                 >
                   ✨ Buy a Copy
