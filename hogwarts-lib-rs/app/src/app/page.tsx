@@ -351,6 +351,7 @@ export default function Home() {
       const uploadedJson = await response.json();
   
       const creators = buildRoyaltyCreators(uploadedJson);
+      // ^--- NOTE: Use Metaplex hydra fanout here (precise royalty system)
       console.log("✅ Parsed Creators:", creators);
   
       const metaplex = Metaplex.make(connection).use(walletAdapterIdentity(wallet));
