@@ -18,11 +18,12 @@ export default function BookshelfPage() {
 
   const wallet = useWallet();
   const connection = new Connection('http://127.0.0.1:8899');
+  const ORG_CREATOR_PUBKEY = process.env.NEXT_PUBLIC_ORG_CREATOR_PUBKEY!;
 
   useEffect(() => {
     const fetchNFTs = async () => {
       const metaplex = Metaplex.make(connection).use(walletAdapterIdentity(wallet));
-      const ORG_CREATOR_PUBKEY = new PublicKey('CqDhZbsAs41kWYA5wbJ8oMZ5tjhiujfqkdHafGmpp2Cu'); //' move to env sap
+      const OCP = new PublicKey(ORG_CREATOR_PUBKEY);
   
       try {
         const positions = [0, 1, 2, 3, 4];
@@ -30,7 +31,7 @@ export default function BookshelfPage() {
         const allResults = await Promise.all(
           positions.map((position) =>
             metaplex.nfts()
-              .findAllByCreator({ creator: ORG_CREATOR_PUBKEY, position })
+              .findAllByCreator({ creator: OCP, position })
               .catch((e) => {
                 console.warn(`Position ${position} fetch failed`, e);
                 return [];
@@ -49,7 +50,7 @@ export default function BookshelfPage() {
             });
   
             const includesOrg = (nft.creators ?? []).some(
-              (c) => c.address.toBase58() === ORG_CREATOR_PUBKEY.toBase58()
+              (c) => c.address.toBase58() === OCP.toBase58()
             );
   
             if (!includesOrg || !nft.json?.image) continue;
@@ -81,7 +82,7 @@ export default function BookshelfPage() {
   
   return (
     <div className="app-container">
-      <h1 className="app-title mb-8">🧙 My Created Books</h1>
+      <h1 className="app-title mb-8">The Digital Archive Bookshelf</h1>
 
       {loading ? (
         <p className="text-gray-500">Loading your minted books...</p>
