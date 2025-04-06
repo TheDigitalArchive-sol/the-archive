@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { isMetadata, Metaplex, walletAdapterIdentity } from '@metaplex-foundation/js';
 import { Connection, PublicKey } from '@solana/web3.js';
+import Link from 'next/link';
 
 type NftDisplay = {
   mintAddress: string;
@@ -25,10 +26,10 @@ export default function BookshelfPage() {
   useEffect(() => {
     const fetchNFTs = async () => {
       const OCP = new PublicKey(ORG_CREATOR_PUBKEY);
-  
+
       try {
         const positions = [0, 1, 2, 3, 4];
-  
+
         const allResults = await Promise.all(
           positions.map((position) =>
             metaplex.nfts()
@@ -39,29 +40,31 @@ export default function BookshelfPage() {
               })
           )
         );
-  
+
         const metadataList = allResults.flat();
         const loaded: NftDisplay[] = [];
-  
+
         for (const metadata of metadataList) {
           try {
             const nft = await metaplex.nfts().findByMint({
               mintAddress: isMetadata(metadata) ? metadata.mintAddress : metadata.address,
               loadJsonMetadata: true,
             });
-  
+
             const includesOrg = (nft.creators ?? []).some(
               (c) => c.address.toBase58() === OCP.toBase58()
             );
-  
-            if (!includesOrg || !nft.json?.image) continue;
-  
-            let copiesSold = 1;
+
+            const isMasterEdition = "edition" in nft && nft.edition?.isOriginal;
+
+            if (!includesOrg || !nft.json?.image || !isMasterEdition) continue;
+
+            let copiesSold = 0;
 
             if ("edition" in nft && nft.edition?.isOriginal) {
               copiesSold = Number(nft.edition.supply);
-            }            
-            
+            }
+
             loaded.push({
               mintAddress: nft.address.toBase58(),
               title: nft.name,
@@ -69,13 +72,13 @@ export default function BookshelfPage() {
               uri: nft.uri,
               copiesSold,
             });
-            
+
             await new Promise((r) => setTimeout(r, 100)); // Rate limit!!
           } catch (e) {
             console.warn('⚠️ Failed to load NFT metadata:', e);
           }
         }
-  
+
         setNfts(loaded);
       } catch (e) {
         console.error('❌ Failed to fetch NFTs:', e);
@@ -83,15 +86,16 @@ export default function BookshelfPage() {
         setLoading(false);
       }
     };
-  
+
     fetchNFTs();
   }, []);
-  
-  
+
+
   return (
     <div className="app-container">
-      <h1 className="app-title mb-8">The Digital Archive Bookshelf</h1>
-
+      <Link href="/" className="app-title mb-8 hover:underline cursor-pointer">
+        The Digital Archive Bookshelf
+      </Link>
       {loading ? (
         <p className="text-gray-500">Loading your minted books...</p>
       ) : nfts.length === 0 ? (
@@ -114,7 +118,7 @@ export default function BookshelfPage() {
               </p>
 
               <p className="text-sm text-gray-400 mb-4">
-              📦 Copies Sold: {nft.copiesSold}
+                📦 Copies Sold: {nft.copiesSold}
               </p>
 
               <div className="flex flex-col w-full gap-2">
