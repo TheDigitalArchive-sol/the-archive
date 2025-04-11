@@ -17,6 +17,8 @@ type NftDisplay = {
 export default function BookshelfPage() {
   const [nfts, setNfts] = useState<NftDisplay[]>([]);
   const [loading, setLoading] = useState(true);
+  const [friendAddressInputs, setFriendAddressInputs] = useState<{ [mintAddress: string]: string }>({});
+  const [showFriendInput, setShowFriendInput] = useState<{ [mintAddress: string]: boolean }>({});
 
   const wallet = useWallet();
   const connection = new Connection('http://127.0.0.1:8899');
@@ -86,10 +88,27 @@ export default function BookshelfPage() {
         setLoading(false);
       }
     };
-
     fetchNFTs();
   }, []);
 
+
+  const handleBuyForFriend = async (mintAddress: string) => {
+    const recipientAddress = friendAddressInputs[mintAddress];
+    if (!recipientAddress) {
+      return;
+    }
+
+    try {
+      const edition = await metaplex.nfts().printNewEdition({
+        originalMint: new PublicKey(mintAddress),
+        newOwner: new PublicKey(recipientAddress),
+      });
+      console.log("✅ Printed new edition for friend!");
+      console.log("🎁 Sent to address:", recipientAddress);
+    } catch (e) {
+      console.error("❌ Failed to mint for friend:", e);
+    }
+  };
 
   return (
     <div className="app-container">
@@ -146,6 +165,40 @@ export default function BookshelfPage() {
                 >
                   ✨ Buy a Copy
                 </button>
+                <button
+                  onClick={() =>
+                    setShowFriendInput((prev) => ({
+                      ...prev,
+                      [nft.mintAddress]: !prev[nft.mintAddress],
+                    }))
+                  }
+                  className="btn-warning"
+                >
+                  🎁 Buy for a Friend
+                </button>
+
+                {showFriendInput[nft.mintAddress] && (
+                  <div className="flex flex-col gap-2 mt-2">
+                    <input
+                      type="text"
+                      placeholder="Recipient Wallet Address"
+                      className="input-field"
+                      value={friendAddressInputs[nft.mintAddress] || ""}
+                      onChange={(e) =>
+                        setFriendAddressInputs((prev) => ({
+                          ...prev,
+                          [nft.mintAddress]: e.target.value,
+                        }))
+                      }
+                    />
+                    <button
+                      onClick={() => handleBuyForFriend(nft.mintAddress)}
+                      className="btn-primary"
+                    >
+                      🚀 Send Copy
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           ))}
