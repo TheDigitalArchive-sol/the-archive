@@ -5,6 +5,7 @@ import { useWallet } from '@solana/wallet-adapter-react';
 import { isMetadata, Metaplex, walletAdapterIdentity } from '@metaplex-foundation/js';
 import { Connection, PublicKey } from '@solana/web3.js';
 import Link from 'next/link';
+import { distributeRewards } from '../utils/royalties';
 
 type NftDisplay = {
   mintAddress: string;
@@ -94,11 +95,17 @@ export default function BookshelfPage() {
 
   const handleBuyForFriend = async (mintAddress: string) => {
     const recipientAddress = friendAddressInputs[mintAddress];
-    if (!recipientAddress) {
-      return;
-    }
-
+    if (!recipientAddress) return;
+  
     try {
+      const nftDetails = await metaplex.nfts().findByMint({ mintAddress: new PublicKey(mintAddress) });
+      const creators = nftDetails.creators?.map(c => ({
+        address: c.address,
+        share: c.share,
+      })) || [];
+  
+      await distributeRewards(connection, wallet, creators, 20); // 20 SOL
+  
       const edition = await metaplex.nfts().printNewEdition({
         originalMint: new PublicKey(mintAddress),
         newOwner: new PublicKey(recipientAddress),
@@ -152,18 +159,25 @@ export default function BookshelfPage() {
                 <button
                   onClick={async () => {
                     try {
+                      const nftDetails = await metaplex.nfts().findByMint({ mintAddress: new PublicKey(nft.mintAddress) });
+                      const creators = nftDetails.creators?.map(c => ({
+                        address: c.address,
+                        share: c.share,
+                      })) || [];
+
+                      await distributeRewards(connection, wallet, creators, 20);
+
                       const edition = await metaplex.nfts().printNewEdition({
                         originalMint: new PublicKey(nft.mintAddress),
                       });
                       console.log("✅ Printed new edition!");
-                      console.log("📦 Edition address:", edition.nft.address.toBase58());
                     } catch (e) {
                       console.error("❌ Failed to mint edition copy:", e);
                     }
                   }}
                   className="btn-primary"
                 >
-                  ✨ Buy a Copy
+                  ✨ Buy a Copy (20 SOL)
                 </button>
                 <button
                   onClick={() =>

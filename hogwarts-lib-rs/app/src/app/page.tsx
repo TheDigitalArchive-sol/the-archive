@@ -3,11 +3,12 @@
 import { useState, useEffect } from "react";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import { useWallet } from "@solana/wallet-adapter-react";
-import { Connection, PublicKey } from "@solana/web3.js";
+import { Connection, LAMPORTS_PER_SOL, PublicKey, SystemProgram } from "@solana/web3.js";
 import { useProvider } from "./utils";
 import { Program, Idl } from "@project-serum/anchor";
 import { Transaction, Message } from "@solana/web3.js";
 import { useRouter } from 'next/navigation';
+import { distributeRewards } from './utils/royalties';
 
 import {
   Metaplex,
@@ -356,14 +357,15 @@ export default function Home() {
   
       const metaplex = Metaplex.make(connection).use(walletAdapterIdentity(wallet));
   
-      const uri = "https://arweave.net/eR4wgSnWusIG-xF2BZzsiOwVehQsvfCT8VAUC4NHQ5Y"; // this is a mock-test from arweave!!! (Localnet hack for testing)
+      await distributeRewards(connection, wallet, creators, 20); // 20 SOL Fixed Price
+      const uri = "https://arweave.net/eR4wgSnWusIG-xF2BZzsiOwVehQsvfCT8VAUC4NHQ5Y"; // test URI
   
       const { nft } = await metaplex.nfts().create({
         uri,
         name: uploadedJson?.title || "The Digital Archive - Book #1",
         sellerFeeBasisPoints: 600,
-        creators,
-        maxSupply: null, // null = unlimited
+        creators, //  Same creators list (royalty metadata)!
+        maxSupply: null,
       });
   
       console.log("✅ NFT minted!");
