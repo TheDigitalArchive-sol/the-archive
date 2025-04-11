@@ -379,6 +379,16 @@ export default function Home() {
   return (
     <div className="app-container">
       <h1 className="app-title">The Digital Archive</h1>
+      <p className="wallet-info">
+        Dev Info (TMP)<br />
+        UserW   - Wallet     | Phantom      | CqDhZbsAs41kWYA5wbJ8oMZ5tjhiujfqkdHafGmpp2Cu<br />
+        Genesis - Account 0  | Faucet/Admin | HnbV3fxBUZUf3qNKKqucaSqzQ7aBHmjVARU9KrA1cCjL<br /> 
+        Alice   - Account 1  | Author       | 9FS7Y2cq7Bn4YMMV7qUXbX3LbyZZ7zgBYXGiT8nVauSd<br /> 
+        Bob     - Account 2  | Illustrator  | 91frMmiwteBu7Ljfy3vp6bxKSx93EcqpNmpGUT4f5bB6<br /> 
+        Charlie - Account 3  | Editor       | DLCVPSdZH15tVcX5fJNtgBAkoZfZEr7yf7GxZ6VFFi5M<br /> 
+        David   - Account 4  | Translator   | 8dRtfZGRm91XfdfUUyY6g6hW5pgYPdhRXVbEHVwuDvGa<br /> 
+        Ellen   - Account 5  | Jolly        | AHFujZP3Lmh8dffzhA2bqYkNyfhMM3PQK9Xwm1feUTj6<br /> 
+      </p>
 
       {isClient && <WalletMultiButton className="btn-accent" />}
 
