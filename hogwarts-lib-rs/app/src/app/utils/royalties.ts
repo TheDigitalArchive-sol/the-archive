@@ -6,6 +6,11 @@ export const distributeRewards = async (
   creators: { address: PublicKey; share: number }[],
   totalPriceSol: number
 ) => {
+
+  if (isNaN(totalPriceSol) || totalPriceSol <= 0) {
+    throw new Error("Invalid price: cannot distribute rewards.");
+  }
+  
   if (!wallet || !wallet.publicKey) {
     throw new Error("Wallet not connected");
   }
