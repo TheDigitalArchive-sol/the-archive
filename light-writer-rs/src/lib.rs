@@ -54,7 +54,7 @@ pub fn populate_book_metadata() -> BookMetadata {
         edition: env::var("EDITION").unwrap_or_default(),
         description: env::var("DESCRIPTION").unwrap_or_default(),
         table_of_contents: env::var("TABLE_OF_CONTENTS").unwrap_or_default().split(',').map(String::from).collect(),
-        cover_image_url: env::var("COVER_IMAGE_URL").unwrap_or_default(),
+        nft_initial_price: env::var("NFT_INITIAL_PRICE").unwrap_or("0".to_string()).parse::<u32>().unwrap_or(0),
         page_count: env::var("PAGE_COUNT").unwrap_or("0".to_string()).parse::<u32>().unwrap_or(0),
         notes: env::var("NOTES").unwrap_or_default(),
         quotes: env::var("QUOTES").unwrap_or_default().split(',').map(String::from).collect(),
