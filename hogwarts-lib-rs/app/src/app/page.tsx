@@ -9,6 +9,7 @@ import { Program, Idl } from "@project-serum/anchor";
 import { Transaction, Message } from "@solana/web3.js";
 import { useRouter } from 'next/navigation';
 import { distributeRewards } from './utils/royalties';
+import { retrieveStoredData } from './utils/utils';
 
 import {
   Metaplex,
@@ -234,51 +235,6 @@ export default function Home() {
       fetchBalance();
     }
   }, [wallet]);
-
-  const retrieveStoredData = async (key: string) => {
-    if (!connection || !pdaAddress || !anchorBridge) {
-      console.warn("⚠️ Connection, Storage Account PDA, or AnchorBridge not available.");
-      return;
-    }
-
-    try {
-      console.log("📥 Retrieving stored book data...");
-      const accountInfo = await connection.getAccountInfo(new PublicKey(pdaAddress));
-      if (!accountInfo || !accountInfo.data) {
-        console.error("❌ No data found in storage account!");
-        return;
-      }
-
-      console.log("📏 Raw Data Length:", accountInfo.data.length);
-
-      let storedBytes = accountInfo.data.slice(20);
-
-      while (storedBytes.length > 0 && storedBytes[storedBytes.length - 1] === 0) {
-        storedBytes = storedBytes.slice(0, -1);
-      }
-
-      console.log("✅ Encrypted Data (Hex) FROM CHAIN:", Buffer.from(storedBytes).toString("hex"));
-      console.log("🔍 Stored Bytes:", storedBytes);
-
-      if (!storedBytes || storedBytes.length === 0) {
-        console.error("❌ No valid data found in storage account!");
-        return;
-      }
-
-      let storedText;
-      try {
-        storedText = await anchorBridge.light_msg_decryption(key, storedBytes);
-      } catch (error) {
-        console.error("❌ Decryption failed:", error);
-        return;
-      }
-
-      console.log("📖 Stored Book Content:", storedText);
-      setRetrievedContent(storedText);
-    } catch (error) {
-      console.error("❌ Error retrieving stored data:", error);
-    }
-  };
 
   const buildRoyaltyCreators = (json: any): { address: PublicKey; share: number }[] => {
     const roleWeight: Record<string, number> = {
@@ -517,7 +473,10 @@ export default function Home() {
           onChange={(e) => setPdaAddress(e.target.value)}
         />
         <button
-          onClick={() => retrieveStoredData(UNSAFE_KEY)}
+          onClick={async () => {
+            const result = await retrieveStoredData(connection, pdaAddress, anchorBridge, UNSAFE_KEY);
+            if (result) setRetrievedContent(result);
+          }}
           className="btn-primary mt-4 w-full"
         >
           📥 Retrieve Stored Data
