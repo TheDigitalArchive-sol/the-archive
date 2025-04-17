@@ -35,8 +35,8 @@ export default function Home() {
   const connection = new Connection("http://127.0.0.1:8899");
 
   const PROGRAM_ID = process.env.NEXT_PUBLIC_PROGRAM_ID!;
-  const UNSAFE_KEY = process.env.NEXT_PUBLIC_UNSAFE_KEY!;  
-  
+  const UNSAFE_KEY = process.env.NEXT_PUBLIC_UNSAFE_KEY!;
+
   useEffect(() => {
     if (!PROGRAM_ID) {
       console.error("❌ Missing PROGRAM_ID!");
@@ -114,8 +114,8 @@ export default function Home() {
     }
   };
 
-  const storeDataInChunks = async (key: any, jsonData: any) => {
-    if (!anchorBridge || !wallet.signAllTransactions || !connection || !pdaAddress) {
+  const storeDataInChunks = async (key: any, jsonData: any, targetPda: string) => {
+    if (!anchorBridge || !wallet.signAllTransactions || !connection || !targetPda) {
       console.warn("⚠️ Storage account not initialized or wallet unavailable.");
       return;
     }
@@ -131,10 +131,10 @@ export default function Home() {
       jsonData.publisher = wallet.publicKey?.toBase58?.() || jsonData.publisher;
       const today = new Date();
       const formattedDate = `${String(today.getDate()).padStart(2, '0')}/${String(today.getMonth() + 1).padStart(2, '0')}/${today.getFullYear()}`;
-      
+
       jsonData.publication_date = jsonData.publication_date || formattedDate;
       jsonData.isbn = jsonData.isbn || anchorBridge.generate_isbn(jsonData.title, jsonData.authors);
-      
+
       const jsonString = JSON.stringify(jsonData);
       let encrypted_data;
       try {
@@ -148,7 +148,7 @@ export default function Home() {
       }
 
       console.log(`📡 Storing encrypted data chunks...`);
-      const txsBase64 = await anchorBridge.store_data_in_chunks(pdaAddress, encrypted_data, 900);
+      const txsBase64 = await anchorBridge.store_data_in_chunks(targetPda, encrypted_data, 900);
       console.log("🔍 Raw WASM output:", txsBase64);
 
       if (!Array.isArray(txsBase64) || txsBase64.length === 0) {
@@ -231,7 +231,7 @@ export default function Home() {
       setProgram(program);
       fetchBalance();
     }
-  }, [wallet, provider]);
+  }, [wallet]);
 
   const retrieveStoredData = async (key: string) => {
     if (!connection || !pdaAddress || !anchorBridge) {
@@ -286,28 +286,28 @@ export default function Home() {
       translator: 1,
       publisher: 1,
     };
-  
+
     const contributorMap: Record<string, { weight: number; role: string[] }> = {};
-  
+
     for (const role in roleWeight) {
       const value = json[role];
       if (!value) continue;
-  
+
       const contributors = Array.isArray(value) ? value : [value];
       for (const wallet of contributors) {
         if (!wallet) continue;
-  
+
         if (!contributorMap[wallet]) {
           contributorMap[wallet] = { weight: 0, role: [] };
         }
-  
+
         contributorMap[wallet].weight += roleWeight[role];
         contributorMap[wallet].role.push(role);
       }
     }
-  
+
     const totalWeight = Object.values(contributorMap).reduce((sum, c) => sum + c.weight, 0);
-  
+
     let rawShares = Object.entries(contributorMap).map(([wallet, info]) => {
       const exactShare = (info.weight / totalWeight) * 100;
       return {
@@ -318,28 +318,28 @@ export default function Home() {
         remainder: exactShare % 1,
       };
     });
-  
+
     let currentTotal = rawShares.reduce((sum, r) => sum + r.floored, 0);
     let toDistribute = 100 - currentTotal;
     rawShares.sort((a, b) => b.remainder - a.remainder);
-  
+
     for (let i = 0; i < rawShares.length && toDistribute > 0; i++) {
       rawShares[i].floored += 1;
       toDistribute--;
     }
-  
+
     rawShares.sort((a, b) => {
       const aIsPublisher = a.roles.includes('publisher') ? -1 : 0;
       const bIsPublisher = b.roles.includes('publisher') ? -1 : 0;
       return aIsPublisher - bIsPublisher;
     });
-  
+
     return rawShares.map((entry) => ({
       address: new PublicKey(entry.wallet),
       share: entry.floored,
     }));
   };
-  
+
 
   const mintNft = async (wallet: any, uploadedJsonUrl: string) => {
     try {
@@ -347,19 +347,19 @@ export default function Home() {
         console.error("❌ Wallet not connected!");
         return;
       }
-  
+
       const response = await fetch(uploadedJsonUrl);
       const uploadedJson = await response.json();
-  
+
       const creators = buildRoyaltyCreators(uploadedJson);
       // ^--- NOTE: Use Metaplex hydra fanout here (precise royalty system)
       console.log("✅ Parsed Creators:", creators);
-  
+
       const metaplex = Metaplex.make(connection).use(walletAdapterIdentity(wallet));
-  
+
       await distributeRewards(connection, wallet, creators, 20); // 20 SOL Fixed Price
       const uri = "https://arweave.net/eR4wgSnWusIG-xF2BZzsiOwVehQsvfCT8VAUC4NHQ5Y"; // test URI
-  
+
       const { nft } = await metaplex.nfts().create({
         uri,
         name: uploadedJson?.title || "The Digital Archive - Book #1",
@@ -367,16 +367,16 @@ export default function Home() {
         creators, //  Same creators list (royalty metadata)!
         maxSupply: null,
       });
-  
+
       console.log("✅ NFT minted!");
       console.log(`🧾 NFT Mint Address: ${nft.address.toBase58()}`);
       console.log(`🌐 View on Solana Explorer: https://explorer.solana.com/address/${nft.address.toBase58()}?cluster=devnet`);
-  
+
     } catch (error) {
       console.error("❌ Error minting NFT:", error);
     }
   };
-  
+
 
   return (
     <div className="app-container">
@@ -384,12 +384,12 @@ export default function Home() {
       <p className="wallet-info">
         Dev Info (TMP)<br />
         UserW   - Wallet     | Phantom      | CqDhZbsAs41kWYA5wbJ8oMZ5tjhiujfqkdHafGmpp2Cu<br />
-        Genesis - Account 0  | Faucet/Admin | HnbV3fxBUZUf3qNKKqucaSqzQ7aBHmjVARU9KrA1cCjL<br /> 
-        Alice   - Account 1  | Author       | 9FS7Y2cq7Bn4YMMV7qUXbX3LbyZZ7zgBYXGiT8nVauSd<br /> 
-        Bob     - Account 2  | Illustrator  | 91frMmiwteBu7Ljfy3vp6bxKSx93EcqpNmpGUT4f5bB6<br /> 
-        Charlie - Account 3  | Editor       | DLCVPSdZH15tVcX5fJNtgBAkoZfZEr7yf7GxZ6VFFi5M<br /> 
-        David   - Account 4  | Translator   | 8dRtfZGRm91XfdfUUyY6g6hW5pgYPdhRXVbEHVwuDvGa<br /> 
-        Ellen   - Account 5  | Jolly        | AHFujZP3Lmh8dffzhA2bqYkNyfhMM3PQK9Xwm1feUTj6<br /> 
+        Genesis - Account 0  | Faucet/Admin | HnbV3fxBUZUf3qNKKqucaSqzQ7aBHmjVARU9KrA1cCjL<br />
+        Alice   - Account 1  | Author       | 9FS7Y2cq7Bn4YMMV7qUXbX3LbyZZ7zgBYXGiT8nVauSd<br />
+        Bob     - Account 2  | Illustrator  | 91frMmiwteBu7Ljfy3vp6bxKSx93EcqpNmpGUT4f5bB6<br />
+        Charlie - Account 3  | Editor       | DLCVPSdZH15tVcX5fJNtgBAkoZfZEr7yf7GxZ6VFFi5M<br />
+        David   - Account 4  | Translator   | 8dRtfZGRm91XfdfUUyY6g6hW5pgYPdhRXVbEHVwuDvGa<br />
+        Ellen   - Account 5  | Jolly        | AHFujZP3Lmh8dffzhA2bqYkNyfhMM3PQK9Xwm1feUTj6<br />
       </p>
 
       {isClient && <WalletMultiButton className="btn-accent" />}
@@ -422,19 +422,19 @@ export default function Home() {
       <div className="mt-6 w-full max-w-2xl">
         <input type="file" accept=".json" onChange={handleFileUpload} className="file-input" />
         <button
+          className="btn-warning mt-4 w-full"
           onClick={async () => {
             if (!uploadedJson) {
               console.warn("⚠️ No JSON file uploaded yet!");
               return;
             }
-                // Step 1: Initialize storage
+
             const pda: any = await initializeStorageAccount();
             if (!pda) {
               console.error("❌ Failed to initialize storage account.");
               return;
             }
 
-            // Step 2: Wait until the PDA is confirmed to exist on-chain
             let retries = 10;
             while (retries > 0) {
               try {
@@ -459,17 +459,31 @@ export default function Home() {
               return;
             }
 
-            // Step 3: Store data
-            await storeDataInChunks(UNSAFE_KEY, uploadedJson);
+            await storeDataInChunks(UNSAFE_KEY, uploadedJson, pda);
+            const metadataJson = {
+              ...uploadedJson,
+              properties: {
+                ...uploadedJson.properties,
+                creators: [
+                  {
+                    address: wallet.publicKey?.toBase58(),
+                    share: 100,
+                  },
+                ],
+              },
+            };
+
+            const blob = new Blob([JSON.stringify(metadataJson)], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            await mintNft(wallet, url);
           }}
-          className="btn-accent mt-4 w-full"
         >
-          📩 Submit Book Content
+          🚀 Mint Book NFT!
         </button>
       </div>
 
       <div className="mt-6 w-full">
-      <h2 className="text-xl font-semibold">🧾 Retrive Stored Data from Address</h2>
+        <h2 className="text-xl font-semibold">🧾 Retrive Stored Data from Address</h2>
 
         <input
           type="text"
@@ -492,33 +506,6 @@ export default function Home() {
           <pre className="retrieved-content-body">{JSON.stringify(retrievedContent, null, 2)}</pre>
         </div>
       )}
-
-      <button
-        className="btn-warning mt-6"
-        onClick={() => {
-          const metadataJson = {
-            ...uploadedJson,
-            properties: {
-              ...uploadedJson.properties,
-              creators: [
-                {
-                  address: wallet.publicKey?.toBase58(),
-                  share: 100,
-                },
-              ],
-            },
-          };
-
-          const blob = new Blob([JSON.stringify(metadataJson)], { type: "application/json" });
-          const url = URL.createObjectURL(blob);
-          mintNft(wallet, url);
-        }}
-      >
-        🚀 Mint Associated NFT
-      </button>
-
-
-
     </div>
   );
 }
