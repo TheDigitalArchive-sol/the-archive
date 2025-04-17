@@ -341,7 +341,7 @@ export default function Home() {
   };
 
 
-  const mintNft = async (wallet: any, uploadedJsonUrl: string) => {
+  const mintNft = async (wallet: any, uploadedJsonUrl: string, pda: any) => {
     try {
       if (!wallet || !wallet.publicKey) {
         console.error("❌ Wallet not connected!");
@@ -365,6 +365,7 @@ export default function Home() {
         name: uploadedJson?.title || "The Digital Archive - Book #1",
         sellerFeeBasisPoints: 600,
         creators, //  Same creators list (royalty metadata)!
+        collection: new PublicKey(pda), // This is a Hack! needs to be added to uri in the future, we need to ensure collection mechanism is working properly in the future.
         maxSupply: null,
       });
 
@@ -475,7 +476,7 @@ export default function Home() {
 
             const blob = new Blob([JSON.stringify(metadataJson)], { type: "application/json" });
             const url = URL.createObjectURL(blob);
-            await mintNft(wallet, url);
+            await mintNft(wallet, url, pda);
           }}
         >
           🚀 Mint Book NFT!
