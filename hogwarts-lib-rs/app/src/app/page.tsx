@@ -3,10 +3,17 @@
 import { useState, useEffect } from "react";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import { useWallet } from "@solana/wallet-adapter-react";
-import { Connection, PublicKey } from "@solana/web3.js";
+import { Connection, LAMPORTS_PER_SOL, PublicKey, SystemProgram } from "@solana/web3.js";
 import { useProvider } from "./utils";
 import { Program, Idl } from "@project-serum/anchor";
 import { Transaction, Message } from "@solana/web3.js";
+import { useRouter } from 'next/navigation';
+import { distributeRewards } from './utils/royalties';
+
+import {
+  Metaplex,
+  walletAdapterIdentity
+} from '@metaplex-foundation/js';
 
 export default function Home() {
   const [isClient, setIsClient] = useState(false);
@@ -23,10 +30,12 @@ export default function Home() {
   const [bookContent, setBookContent] = useState("");
   const [retrievedContent, setRetrievedContent] = useState<string | null>(null);
   const [uploadedJson, setUploadedJson] = useState<any | null>(null);
+  const router = useRouter();
 
   const connection = new Connection("http://127.0.0.1:8899");
-  const PROGRAM_ID = "8Besjdk7LVmnJfuCKAaM2sfAubbggvhgT597XFH8AXbj";
-  const unsafe_key = "book1234567890123456789012345678";
+
+  const PROGRAM_ID = process.env.NEXT_PUBLIC_PROGRAM_ID!;
+  const UNSAFE_KEY = process.env.NEXT_PUBLIC_UNSAFE_KEY!;  
   
   useEffect(() => {
     if (!PROGRAM_ID) {
@@ -119,8 +128,14 @@ export default function Home() {
 
       console.log("📖 Preparing JSON data for encryption...");
 
+      jsonData.publisher = wallet.publicKey?.toBase58?.() || jsonData.publisher;
+      const today = new Date();
+      const formattedDate = `${String(today.getDate()).padStart(2, '0')}/${String(today.getMonth() + 1).padStart(2, '0')}/${today.getFullYear()}`;
+      
+      jsonData.publication_date = jsonData.publication_date || formattedDate;
+      jsonData.isbn = jsonData.isbn || anchorBridge.generate_isbn(jsonData.title, jsonData.authors);
+      
       const jsonString = JSON.stringify(jsonData);
-
       let encrypted_data;
       try {
         console.log("🔍 Encrypting JSON data...");
@@ -263,9 +278,119 @@ export default function Home() {
     }
   };
 
+  const buildRoyaltyCreators = (json: any): { address: PublicKey; share: number }[] => {
+    const roleWeight: Record<string, number> = {
+      authors: 3,
+      illustrator: 2,
+      editor: 1,
+      translator: 1,
+      publisher: 1,
+    };
+  
+    const contributorMap: Record<string, { weight: number; role: string[] }> = {};
+  
+    for (const role in roleWeight) {
+      const value = json[role];
+      if (!value) continue;
+  
+      const contributors = Array.isArray(value) ? value : [value];
+      for (const wallet of contributors) {
+        if (!wallet) continue;
+  
+        if (!contributorMap[wallet]) {
+          contributorMap[wallet] = { weight: 0, role: [] };
+        }
+  
+        contributorMap[wallet].weight += roleWeight[role];
+        contributorMap[wallet].role.push(role);
+      }
+    }
+  
+    const totalWeight = Object.values(contributorMap).reduce((sum, c) => sum + c.weight, 0);
+  
+    let rawShares = Object.entries(contributorMap).map(([wallet, info]) => {
+      const exactShare = (info.weight / totalWeight) * 100;
+      return {
+        wallet,
+        roles: info.role,
+        exactShare,
+        floored: Math.floor(exactShare),
+        remainder: exactShare % 1,
+      };
+    });
+  
+    let currentTotal = rawShares.reduce((sum, r) => sum + r.floored, 0);
+    let toDistribute = 100 - currentTotal;
+    rawShares.sort((a, b) => b.remainder - a.remainder);
+  
+    for (let i = 0; i < rawShares.length && toDistribute > 0; i++) {
+      rawShares[i].floored += 1;
+      toDistribute--;
+    }
+  
+    rawShares.sort((a, b) => {
+      const aIsPublisher = a.roles.includes('publisher') ? -1 : 0;
+      const bIsPublisher = b.roles.includes('publisher') ? -1 : 0;
+      return aIsPublisher - bIsPublisher;
+    });
+  
+    return rawShares.map((entry) => ({
+      address: new PublicKey(entry.wallet),
+      share: entry.floored,
+    }));
+  };
+  
+
+  const mintNft = async (wallet: any, uploadedJsonUrl: string) => {
+    try {
+      if (!wallet || !wallet.publicKey) {
+        console.error("❌ Wallet not connected!");
+        return;
+      }
+  
+      const response = await fetch(uploadedJsonUrl);
+      const uploadedJson = await response.json();
+  
+      const creators = buildRoyaltyCreators(uploadedJson);
+      // ^--- NOTE: Use Metaplex hydra fanout here (precise royalty system)
+      console.log("✅ Parsed Creators:", creators);
+  
+      const metaplex = Metaplex.make(connection).use(walletAdapterIdentity(wallet));
+  
+      await distributeRewards(connection, wallet, creators, 20); // 20 SOL Fixed Price
+      const uri = "https://arweave.net/eR4wgSnWusIG-xF2BZzsiOwVehQsvfCT8VAUC4NHQ5Y"; // test URI
+  
+      const { nft } = await metaplex.nfts().create({
+        uri,
+        name: uploadedJson?.title || "The Digital Archive - Book #1",
+        sellerFeeBasisPoints: 600,
+        creators, //  Same creators list (royalty metadata)!
+        maxSupply: null,
+      });
+  
+      console.log("✅ NFT minted!");
+      console.log(`🧾 NFT Mint Address: ${nft.address.toBase58()}`);
+      console.log(`🌐 View on Solana Explorer: https://explorer.solana.com/address/${nft.address.toBase58()}?cluster=devnet`);
+  
+    } catch (error) {
+      console.error("❌ Error minting NFT:", error);
+    }
+  };
+  
+
   return (
     <div className="app-container">
       <h1 className="app-title">The Digital Archive</h1>
+      <p className="wallet-info">
+        Dev Info (TMP)<br />
+        UserW   - Wallet     | Phantom      | CqDhZbsAs41kWYA5wbJ8oMZ5tjhiujfqkdHafGmpp2Cu<br />
+        Genesis - Account 0  | Faucet/Admin | HnbV3fxBUZUf3qNKKqucaSqzQ7aBHmjVARU9KrA1cCjL<br /> 
+        Alice   - Account 1  | Author       | 9FS7Y2cq7Bn4YMMV7qUXbX3LbyZZ7zgBYXGiT8nVauSd<br /> 
+        Bob     - Account 2  | Illustrator  | 91frMmiwteBu7Ljfy3vp6bxKSx93EcqpNmpGUT4f5bB6<br /> 
+        Charlie - Account 3  | Editor       | DLCVPSdZH15tVcX5fJNtgBAkoZfZEr7yf7GxZ6VFFi5M<br /> 
+        David   - Account 4  | Translator   | 8dRtfZGRm91XfdfUUyY6g6hW5pgYPdhRXVbEHVwuDvGa<br /> 
+        Ellen   - Account 5  | Jolly        | AHFujZP3Lmh8dffzhA2bqYkNyfhMM3PQK9Xwm1feUTj6<br /> 
+      </p>
 
       {isClient && <WalletMultiButton className="btn-accent" />}
 
@@ -275,6 +400,13 @@ export default function Home() {
           {wallet.publicKey.toBase58().slice(-5)}
         </p>
       )}
+
+      <button
+        className="btn-accent mt-8"
+        onClick={() => router.push('/bookshelf')}
+      >
+        📚 Explore The Bookshelf
+      </button>
 
       {wallet.publicKey && (
         <div className="card">
@@ -308,7 +440,7 @@ export default function Home() {
               console.warn("⚠️ No JSON file uploaded yet!");
               return;
             }
-            storeDataInChunks(unsafe_key, uploadedJson);
+            storeDataInChunks(UNSAFE_KEY, uploadedJson);
           }}
           className="btn-accent mt-4 w-full"
         >
@@ -317,6 +449,8 @@ export default function Home() {
       </div>
 
       <div className="mt-6 w-full">
+      <h2 className="text-xl font-semibold">🧾 Retrive Stored Data from Address</h2>
+
         <input
           type="text"
           className="input-box"
@@ -325,7 +459,7 @@ export default function Home() {
           onChange={(e) => setPdaAddress(e.target.value)}
         />
         <button
-          onClick={() => retrieveStoredData(unsafe_key)}
+          onClick={() => retrieveStoredData(UNSAFE_KEY)}
           className="btn-primary mt-4 w-full"
         >
           📥 Retrieve Stored Data
@@ -338,6 +472,33 @@ export default function Home() {
           <pre className="retrieved-content-body">{JSON.stringify(retrievedContent, null, 2)}</pre>
         </div>
       )}
+
+      <button
+        className="btn-warning mt-6"
+        onClick={() => {
+          const metadataJson = {
+            ...uploadedJson,
+            properties: {
+              ...uploadedJson.properties,
+              creators: [
+                {
+                  address: wallet.publicKey?.toBase58(),
+                  share: 100,
+                },
+              ],
+            },
+          };
+
+          const blob = new Blob([JSON.stringify(metadataJson)], { type: "application/json" });
+          const url = URL.createObjectURL(blob);
+          mintNft(wallet, url);
+        }}
+      >
+        🚀 Mint Associated NFT
+      </button>
+
+
+
     </div>
   );
 }

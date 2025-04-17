@@ -1,0 +1,10 @@
+
+# Copy this file and edit for local environment with deployed address (Local Approach)
+# In Production environment this will me removed (release update)
+
+# Main Envs
+NEXT_PUBLIC_PROGRAM_ID=8Bes...
+NEXT_PUBLIC_UNSAFE_KEY=book1234567890123456789012345678
+NEXT_PUBLIC_ORG_CREATOR_PUBKEY=CqDh...
+
+
