@@ -96,16 +96,16 @@ export default function BookshelfPage() {
   const handleBuyForFriend = async (mintAddress: string) => {
     const recipientAddress = friendAddressInputs[mintAddress];
     if (!recipientAddress) return;
-  
+
     try {
       const nftDetails = await metaplex.nfts().findByMint({ mintAddress: new PublicKey(mintAddress) });
       const creators = nftDetails.creators?.map(c => ({
         address: c.address,
         share: c.share,
       })) || [];
-  
-      await distributeRewards(connection, wallet, creators, 20); // 20 SOL
-  
+
+      await distributeRewards(connection, wallet, creators, Number(nftDetails.json?.nft_initial_price));
+
       const edition = await metaplex.nfts().printNewEdition({
         originalMint: new PublicKey(mintAddress),
         newOwner: new PublicKey(recipientAddress),
@@ -154,7 +154,7 @@ export default function BookshelfPage() {
                   rel="noopener noreferrer"
                   className="btn-secondary text-center"
                 >
-                  📖 View on Explorer
+                  📖 View    Explorer
                 </a>
                 <button
                   onClick={async () => {
@@ -164,8 +164,8 @@ export default function BookshelfPage() {
                         address: c.address,
                         share: c.share,
                       })) || [];
-
-                      await distributeRewards(connection, wallet, creators, 20);
+                      console.log(`Price: ${Number(nftDetails.json?.nft_initial_price)}`)
+                      await distributeRewards(connection, wallet, creators, Number(nftDetails.json?.nft_initial_price));
 
                       const edition = await metaplex.nfts().printNewEdition({
                         originalMint: new PublicKey(nft.mintAddress),
@@ -177,7 +177,7 @@ export default function BookshelfPage() {
                   }}
                   className="btn-primary"
                 >
-                  ✨ Buy a Copy (20 SOL)
+                  ✨ Buy a Copy 
                 </button>
                 <button
                   onClick={() =>

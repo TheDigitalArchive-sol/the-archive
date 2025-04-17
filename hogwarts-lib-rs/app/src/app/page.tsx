@@ -31,7 +31,7 @@ export default function Home() {
   const [retrievedContent, setRetrievedContent] = useState<string | null>(null);
   const [uploadedJson, setUploadedJson] = useState<any | null>(null);
   const router = useRouter();
-  const [book_price, setPrice] = useState<number | "">("");
+  const [nft_initial_price, setPrice] = useState<number | "">("");
 
   const connection = new Connection("http://127.0.0.1:8899");
 
@@ -115,7 +115,7 @@ export default function Home() {
     }
   };
 
-  const storeDataInChunks = async (key: any, jsonData: any, targetPda: string) => {
+  const storeDataInChunks = async (key: any, jsonData: any, targetPda: string, nft_initial_price: Number) => {
     if (!anchorBridge || !wallet.signAllTransactions || !connection || !targetPda) {
       console.warn("⚠️ Storage account not initialized or wallet unavailable.");
       return;
@@ -135,6 +135,7 @@ export default function Home() {
 
       jsonData.publication_date = jsonData.publication_date || formattedDate;
       jsonData.isbn = jsonData.isbn || anchorBridge.generate_isbn(jsonData.title, jsonData.authors);
+      jsonData.nft_initial_price = nft_initial_price || 0;
 
       const jsonString = JSON.stringify(jsonData);
       let encrypted_data;
@@ -436,15 +437,12 @@ export default function Home() {
               type="number"
               step="0.01"
               min="0"
-              value={book_price}
+              value={nft_initial_price}
               onChange={(e) => setPrice(e.target.value === "" ? "" : parseFloat(e.target.value))}
               placeholder="Enter price"
               className="price-input pl-8 w-full"
             />
           </div>
-          {book_price !== "" && isNaN(Number(book_price)) && (
-            <span className="text-red-500 text-xs mt-1">Please enter a valid price.</span>
-          )}
         </div>
 
         {/* Mint Button */}
@@ -485,7 +483,7 @@ export default function Home() {
               return;
             }
 
-            await storeDataInChunks(UNSAFE_KEY, uploadedJson, pda);
+            await storeDataInChunks(UNSAFE_KEY, uploadedJson, pda, Number(nft_initial_price));
             const metadataJson = {
               ...uploadedJson,
               properties: {
@@ -501,7 +499,7 @@ export default function Home() {
 
             const blob = new Blob([JSON.stringify(metadataJson)], { type: "application/json" });
             const url = URL.createObjectURL(blob);
-            await mintNft(wallet, url, pda, book_price);
+            await mintNft(wallet, url, pda, Number(nft_initial_price));
           }}
         >
           🚀 Mint Book NFT!
