@@ -9,7 +9,7 @@ import { Program, Idl } from "@project-serum/anchor";
 import { Transaction, Message } from "@solana/web3.js";
 import { useRouter } from 'next/navigation';
 import { distributeRewards } from './utils/royalties';
-import { retrieveStoredData } from './utils/utils';
+import { retrieveStoredData, useAnchorBridge } from './utils/utils';
 
 import {
   Metaplex,
@@ -18,8 +18,7 @@ import {
 
 export default function Home() {
   const [isClient, setIsClient] = useState(false);
-  const [wasm, setWasm] = useState<any | null>(null);
-  const [anchorBridge, setAnchorBridge] = useState<any | null>(null);
+  const { anchorBridge, wasm } = useAnchorBridge();
   const [initResponse, setInitResponse] = useState<string | null>(null);
   const wallet = useWallet();
   const [balance, setBalance] = useState<number | null>(null);
@@ -38,29 +37,6 @@ export default function Home() {
 
   const PROGRAM_ID = process.env.NEXT_PUBLIC_PROGRAM_ID!;
   const UNSAFE_KEY = process.env.NEXT_PUBLIC_UNSAFE_KEY!;
-
-  useEffect(() => {
-    if (!PROGRAM_ID) {
-      console.error("❌ Missing PROGRAM_ID!");
-      return;
-    }
-
-    import("/home/rzanei/dev/the-archive/powerwand/pkg/powerwand.js").then(async (module) => {
-      await module.default();
-      setWasm(module);
-
-      if (wallet.connected && wallet.publicKey) {
-        try {
-          console.log("✅ Connected Wallet:", wallet.publicKey.toBase58());
-
-          const bridge = new module.AnchorBridge(wallet.publicKey.toBase58(), PROGRAM_ID);
-          setAnchorBridge(bridge);
-        } catch (error) {
-          console.error("❌ Error using wallet as payer:", error);
-        }
-      }
-    }).catch((error) => console.error("❌ Error loading WASM module:", error));
-  }, [wallet]);
 
   const initializeStorageAccount = async (): Promise<string | null> => {
     if (!anchorBridge || !wallet.signTransaction || !connection) {

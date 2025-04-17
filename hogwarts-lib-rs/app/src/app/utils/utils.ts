@@ -1,4 +1,6 @@
 import { Connection, PublicKey } from "@solana/web3.js";
+import { useEffect, useState } from "react";
+import { useWallet } from "@solana/wallet-adapter-react";
   
 export const retrieveStoredData = async (
     connection: Connection,
@@ -44,4 +46,40 @@ export const retrieveStoredData = async (
       return null;
     }
   };
+  
+  export function useAnchorBridge() {
+    const [anchorBridge, setAnchorBridge] = useState<any | null>(null);
+    const [wasm, setWasm] = useState<any | null>(null);
+    const wallet = useWallet();
+  
+    const PROGRAM_ID = process.env.NEXT_PUBLIC_PROGRAM_ID!;
+  
+    useEffect(() => {
+      if (!PROGRAM_ID) {
+        console.error("❌ Missing PROGRAM_ID!");
+        return;
+      }
+  
+      import("/home/rzanei/dev/the-archive/powerwand/pkg/powerwand.js")
+        .then(async (module) => {
+          await module.default();
+          setWasm(module);
+        })
+        .catch((error) => console.error("❌ Error loading WASM module:", error));
+    }, []);
+  
+    useEffect(() => {
+      if (!wasm || !wallet.connected || !wallet.publicKey) return;
+  
+      try {
+        console.log("✅ Wallet connected, initializing AnchorBridge...");
+        const bridge = new wasm.AnchorBridge(wallet.publicKey.toBase58(), PROGRAM_ID);
+        setAnchorBridge(bridge);
+      } catch (error) {
+        console.error("❌ Error creating AnchorBridge:", error);
+      }
+    }, [wasm, wallet.connected, wallet.publicKey]);
+  
+    return { anchorBridge, wasm };
+  }
   

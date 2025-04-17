@@ -6,6 +6,7 @@ import { isMetadata, Metaplex, walletAdapterIdentity } from '@metaplex-foundatio
 import { Connection, PublicKey } from '@solana/web3.js';
 import Link from 'next/link';
 import { distributeRewards } from '../utils/royalties';
+import { retrieveStoredData, useAnchorBridge } from '../utils/utils';
 
 type NftDisplay = {
   mintAddress: string;
@@ -13,13 +14,16 @@ type NftDisplay = {
   image: string;
   uri: string;
   copiesSold?: number;
+  initialPrice?: number;
 };
+const UNSAFE_KEY = process.env.NEXT_PUBLIC_UNSAFE_KEY!;
 
 export default function BookshelfPage() {
   const [nfts, setNfts] = useState<NftDisplay[]>([]);
   const [loading, setLoading] = useState(true);
   const [friendAddressInputs, setFriendAddressInputs] = useState<{ [mintAddress: string]: string }>({});
   const [showFriendInput, setShowFriendInput] = useState<{ [mintAddress: string]: boolean }>({});
+  const { anchorBridge } = useAnchorBridge();
 
   const wallet = useWallet();
   const connection = new Connection('http://127.0.0.1:8899');
@@ -27,6 +31,11 @@ export default function BookshelfPage() {
   const metaplex = Metaplex.make(connection).use(walletAdapterIdentity(wallet));
 
   useEffect(() => {
+    if (!anchorBridge) {
+      console.log("⏳ Loading AnchorBridge");
+      return;
+    }
+
     const fetchNFTs = async () => {
       const OCP = new PublicKey(ORG_CREATOR_PUBKEY);
 
@@ -59,13 +68,24 @@ export default function BookshelfPage() {
             );
 
             const isMasterEdition = "edition" in nft && nft.edition?.isOriginal;
-
             if (!includesOrg || !nft.json?.image || !isMasterEdition) continue;
 
             let copiesSold = 0;
-
             if ("edition" in nft && nft.edition?.isOriginal) {
               copiesSold = Number(nft.edition.supply);
+            }
+
+            let price = 0;
+            try {
+              const pdaAddress = nft.collection?.address;              
+              const result = await retrieveStoredData(connection, pdaAddress, anchorBridge, UNSAFE_KEY);
+
+              if (result) {
+                const decryptedJson = typeof result === "string" ? JSON.parse(result) : result;
+                price = Number(decryptedJson.nft_initial_price || 0);
+              }
+            } catch (err) {
+              console.warn("❗ Error retrieving price data", err);
             }
 
             loaded.push({
@@ -74,9 +94,10 @@ export default function BookshelfPage() {
               image: nft.json.image,
               uri: nft.uri,
               copiesSold,
+              initialPrice: price,
             });
 
-            await new Promise((r) => setTimeout(r, 100)); // Rate limit!!
+            await new Promise((r) => setTimeout(r, 100)); // rate limit
           } catch (e) {
             console.warn('⚠️ Failed to load NFT metadata:', e);
           }
@@ -90,7 +111,7 @@ export default function BookshelfPage() {
       }
     };
     fetchNFTs();
-  }, []);
+  }, [anchorBridge]);
 
 
   const handleBuyForFriend = async (mintAddress: string) => {
@@ -146,6 +167,11 @@ export default function BookshelfPage() {
               <p className="text-sm text-gray-400 mb-4">
                 📦 Copies Sold: {nft.copiesSold}
               </p>
+              
+              <p className="text-sm text-gray-400 mb-4">
+                💵 Price: {nft.initialPrice?.toFixed(2)} SOL
+              </p>
+
 
               <div className="flex flex-col w-full gap-2">
                 <a
@@ -160,12 +186,28 @@ export default function BookshelfPage() {
                   onClick={async () => {
                     try {
                       const nftDetails = await metaplex.nfts().findByMint({ mintAddress: new PublicKey(nft.mintAddress) });
-                      const creators = nftDetails.creators?.map(c => ({
+                      const pdaAddress = nftDetails.collection?.address;
+                      console.log(`pdaAddress: ${pdaAddress}`)
+
+                      const result = await retrieveStoredData(connection, pdaAddress, anchorBridge, UNSAFE_KEY);
+
+                      if (!result) {
+                        console.error("❌ Failed to retrieve or decrypt book data.");
+                        return;
+                      }
+
+                      console.log("📦 Decrypted result:", result);
+
+                      const decryptedJson = typeof result === "string" ? JSON.parse(result) : result;
+                      const price = Number(decryptedJson.nft_initial_price || 0);
+                      console.log("🔍 Decrypted result for", decryptedJson.nft_initial_price);
+
+                      const creators = nftDetails.creators?.map((c) => ({
                         address: c.address,
                         share: c.share,
                       })) || [];
-                      console.log(`Price: ${Number(nftDetails.json?.nft_initial_price)}`)
-                      await distributeRewards(connection, wallet, creators, Number(nftDetails.json?.nft_initial_price));
+
+                      await distributeRewards(connection, wallet, creators, price);
 
                       const edition = await metaplex.nfts().printNewEdition({
                         originalMint: new PublicKey(nft.mintAddress),
@@ -177,7 +219,7 @@ export default function BookshelfPage() {
                   }}
                   className="btn-primary"
                 >
-                  ✨ Buy a Copy 
+                  ✨ Buy a Copy
                 </button>
                 <button
                   onClick={() =>
