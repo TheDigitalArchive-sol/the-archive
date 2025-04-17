@@ -31,6 +31,7 @@ export default function Home() {
   const [retrievedContent, setRetrievedContent] = useState<string | null>(null);
   const [uploadedJson, setUploadedJson] = useState<any | null>(null);
   const router = useRouter();
+  const [book_price, setPrice] = useState<number | "">("");
 
   const connection = new Connection("http://127.0.0.1:8899");
 
@@ -341,7 +342,7 @@ export default function Home() {
   };
 
 
-  const mintNft = async (wallet: any, uploadedJsonUrl: string, pda: any) => {
+  const mintNft = async (wallet: any, uploadedJsonUrl: string, pda: any, price: any) => {
     try {
       if (!wallet || !wallet.publicKey) {
         console.error("❌ Wallet not connected!");
@@ -357,7 +358,7 @@ export default function Home() {
 
       const metaplex = Metaplex.make(connection).use(walletAdapterIdentity(wallet));
 
-      await distributeRewards(connection, wallet, creators, 20); // 20 SOL Fixed Price
+      await distributeRewards(connection, wallet, creators, price);
       const uri = "https://arweave.net/eR4wgSnWusIG-xF2BZzsiOwVehQsvfCT8VAUC4NHQ5Y"; // test URI
 
       const { nft } = await metaplex.nfts().create({
@@ -420,68 +421,92 @@ export default function Home() {
         </div>
       )}
 
-      <div className="mt-6 w-full max-w-2xl">
-        <input type="file" accept=".json" onChange={handleFileUpload} className="file-input" />
-        <button
-          className="btn-warning mt-4 w-full"
-          onClick={async () => {
-            if (!uploadedJson) {
-              console.warn("⚠️ No JSON file uploaded yet!");
-              return;
-            }
 
-            const pda: any = await initializeStorageAccount();
-            if (!pda) {
-              console.error("❌ Failed to initialize storage account.");
-              return;
-            }
+<div className="mt-6 w-full max-w-2xl space-y-4">
+  {/* File Upload */}
+  <label htmlFor="file" className="text-sm text-zinc-400 mb-1">Load Book (Json)</label>
+  <input type="file" accept=".json" onChange={handleFileUpload} className="file-input" />
 
-            let retries = 10;
-            while (retries > 0) {
-              try {
-                const accountInfo = await connection.getAccountInfo(new PublicKey(pda));
-                console.log(`🔍 Checking PDA existence... Retries left: ${retries}`, !!accountInfo);
-            
-                if (accountInfo) {
-                  console.log("✅ PDA is now available on-chain.");
-                  break;
-                }
-              } catch (err) {
-                console.error("❌ Error during getAccountInfo:", err);
-              }
-            
-              await new Promise((res) => setTimeout(res, 3000));
-              retries--;
-            }
-            
+  {/* Price Input */}
+  <div className="flex flex-col">
+    <label htmlFor="price" className="text-sm text-zinc-400 mb-1">Price (in SOL)</label>
+    <div className="relative">
+      <input
+        id="price"
+        type="number"
+        step="0.01"
+        min="0"
+        value={book_price}
+        onChange={(e) => setPrice(e.target.value === "" ? "" : parseFloat(e.target.value))}
+        placeholder="Enter price"
+        className="price-input pl-8 w-full"
+      />
+    </div>
+    {book_price !== "" && isNaN(Number(book_price)) && (
+      <span className="text-red-500 text-xs mt-1">Please enter a valid price.</span>
+    )}
+  </div>
 
-            if (retries === 0) {
-              console.error("❌ PDA account not found after multiple attempts.");
-              return;
-            }
+  {/* Mint Button */}
+  <button
+    className="btn-warning mt-4 w-full"
+    onClick={async () => {
+      if (!uploadedJson) {
+        console.warn("⚠️ No JSON file uploaded yet!");
+        return;
+      }
 
-            await storeDataInChunks(UNSAFE_KEY, uploadedJson, pda);
-            const metadataJson = {
-              ...uploadedJson,
-              properties: {
-                ...uploadedJson.properties,
-                creators: [
-                  {
-                    address: wallet.publicKey?.toBase58(),
-                    share: 100,
-                  },
-                ],
-              },
-            };
+      const pda: any = await initializeStorageAccount();
+      if (!pda) {
+        console.error("❌ Failed to initialize storage account.");
+        return;
+      }
 
-            const blob = new Blob([JSON.stringify(metadataJson)], { type: "application/json" });
-            const url = URL.createObjectURL(blob);
-            await mintNft(wallet, url, pda);
-          }}
-        >
-          🚀 Mint Book NFT!
-        </button>
-      </div>
+      let retries = 10;
+      while (retries > 0) {
+        try {
+          const accountInfo = await connection.getAccountInfo(new PublicKey(pda));
+          console.log(`🔍 Checking PDA existence... Retries left: ${retries}`, !!accountInfo);
+
+          if (accountInfo) {
+            console.log("✅ PDA is now available on-chain.");
+            break;
+          }
+        } catch (err) {
+          console.error("❌ Error during getAccountInfo:", err);
+        }
+
+        await new Promise((res) => setTimeout(res, 3000));
+        retries--;
+      }   
+
+      if (retries === 0) {
+        console.error("❌ PDA account not found after multiple attempts.");
+        return;
+      }
+
+      await storeDataInChunks(UNSAFE_KEY, uploadedJson, pda);
+      const metadataJson = {
+        ...uploadedJson,
+        properties: {
+          ...uploadedJson.properties,
+          creators: [
+            {
+              address: wallet.publicKey?.toBase58(),
+              share: 100,
+            },
+          ],
+        },
+      };
+
+      const blob = new Blob([JSON.stringify(metadataJson)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      await mintNft(wallet, url, pda, book_price);
+    }}
+  >
+    🚀 Mint Book NFT!
+  </button>
+</div>
 
       <div className="mt-6 w-full">
         <h2 className="text-xl font-semibold">🧾 Retrive Stored Data from Address</h2>
