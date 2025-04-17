@@ -60,10 +60,10 @@ export default function Home() {
     }).catch((error) => console.error("❌ Error loading WASM module:", error));
   }, [wallet]);
 
-  const initializeStorageAccount = async () => {
+  const initializeStorageAccount = async (): Promise<string | null> => {
     if (!anchorBridge || !wallet.signTransaction || !connection) {
       console.warn("⚠️ AnchorBridge instance, wallet signer, or connection not available.");
-      return;
+      return null;
     }
 
     try {
@@ -72,10 +72,9 @@ export default function Home() {
 
       if (!wallet.publicKey) {
         console.error("❌ Wallet is not connected!");
-        return;
+        return null;
       }
       const seed = `book_${Date.now().toString()}`;
-
       const [pda] = await PublicKey.findProgramAddress(
         [Buffer.from(seed)],
         new PublicKey(PROGRAM_ID)
@@ -104,13 +103,14 @@ export default function Home() {
         preflightCommitment: "confirmed",
       });
       console.log("✅ Transaction ID:", transactionId);
-
       setTxId(transactionId);
       setInitResponse(`Success: ${transactionId}`);
+      return pda.toBase58();
 
     } catch (error) {
       console.error("❌ Error initializing storage account:", error);
       setInitResponse("Error initializing storage account.");
+      return null;
     }
   };
 
@@ -419,28 +419,48 @@ export default function Home() {
         </div>
       )}
 
-      <button onClick={initializeStorageAccount} className="btn-warning mt-6">
-        🚀 Initialize Storage Account
-      </button>
-
-      {pdaAddress && (
-        <div className="card mt-6 text-lg font-medium">
-          <p>📌 <b>PDA Address:</b> {pdaAddress}</p>
-          {txId && (
-            <p>🔗 <b>Transaction ID:</b> <a target="_blank" className="text-blue-400 underline">{txId}</a></p>
-          )}
-        </div>
-      )}
-
       <div className="mt-6 w-full max-w-2xl">
         <input type="file" accept=".json" onChange={handleFileUpload} className="file-input" />
         <button
-          onClick={() => {
+          onClick={async () => {
             if (!uploadedJson) {
               console.warn("⚠️ No JSON file uploaded yet!");
               return;
             }
-            storeDataInChunks(UNSAFE_KEY, uploadedJson);
+                // Step 1: Initialize storage
+            const pda: any = await initializeStorageAccount();
+            if (!pda) {
+              console.error("❌ Failed to initialize storage account.");
+              return;
+            }
+
+            // Step 2: Wait until the PDA is confirmed to exist on-chain
+            let retries = 10;
+            while (retries > 0) {
+              try {
+                const accountInfo = await connection.getAccountInfo(new PublicKey(pda));
+                console.log(`🔍 Checking PDA existence... Retries left: ${retries}`, !!accountInfo);
+            
+                if (accountInfo) {
+                  console.log("✅ PDA is now available on-chain.");
+                  break;
+                }
+              } catch (err) {
+                console.error("❌ Error during getAccountInfo:", err);
+              }
+            
+              await new Promise((res) => setTimeout(res, 3000));
+              retries--;
+            }
+            
+
+            if (retries === 0) {
+              console.error("❌ PDA account not found after multiple attempts.");
+              return;
+            }
+
+            // Step 3: Store data
+            await storeDataInChunks(UNSAFE_KEY, uploadedJson);
           }}
           className="btn-accent mt-4 w-full"
         >
