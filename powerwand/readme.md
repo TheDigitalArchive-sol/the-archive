@@ -20,3 +20,9 @@ cargo make run
 ```bash
 cargo make book-storage-deploy
 ```
+
+## Run the Dev-Local UI
+```bash
+cd hogwarts-lib-rs/app
+npm run dev
+```
