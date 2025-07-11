@@ -24,7 +24,7 @@ export default function Home() {
   const [balance, setBalance] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [program, setProgram] = useState<Program<Idl> | null>(null);
-
+  useEffect(() => { setIsClient(true) }, []);
   const [pdaAddress, setPdaAddress] = useState<string | null>(null);
   const [txId, setTxId] = useState<string | null>(null);
   const [bookContent, setBookContent] = useState("");
