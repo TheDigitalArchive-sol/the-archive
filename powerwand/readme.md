@@ -21,8 +21,19 @@ cargo make run
 cargo make book-storage-deploy
 ```
 
+# How To Test the UI
+
 ## Run the Dev-Local UI
 ```bash
 cd hogwarts-lib-rs/app
 npm run dev
 ```
+
+## Wallet Setup
+```bash
+# Connect the wallet from the UI
+# Faucet the Wallet (local-net)
+solana airdrop 1000 <address_here>
+# Wait for confirmation and check balance
+```
+
